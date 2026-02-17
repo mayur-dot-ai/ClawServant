@@ -292,16 +292,15 @@ for r in results:
 ```
 ~/.clawservant/
 ├── credentials.json          # LLM provider config (you create)
-└── workspace/
-    ├── core.md               # Personality file (WHO you are) - optional
-    ├── brain/                # Knowledge files (WHAT you know) - optional
-    │   ├── domain-knowledge.md
-    │   ├── coding-standards.md
-    │   └── research-methodology.md
-    ├── memory.jsonl          # Persistent memories (auto-generated)
-    ├── state.json            # Agent state (auto-generated)
-    ├── tasks/                # Task queue (you drop .md files)
-    └── results/              # Task outputs (auto-generated)
+├── core.md                   # Personality file (WHO you are) - optional
+├── brain/                    # Knowledge files (WHAT you know) - optional
+│   ├── domain-knowledge.md
+│   ├── coding-standards.md
+│   └── research-methodology.md
+├── memory.jsonl              # Persistent memories (auto-generated)
+├── state.json                # Agent state (auto-generated)
+├── tasks/                    # Task queue (you drop .md files)
+└── results/                  # Task outputs (auto-generated)
 ```
 
 ### Core Personality File

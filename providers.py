@@ -54,9 +54,9 @@ class BedrockProvider(LLMProvider):
                 aws_access_key_id=self.access_key,
                 aws_secret_access_key=self.secret_key,
             )
-            # Test with a simple API call
-            self.client.list_foundation_models()
-            print(f"DEBUG BedrockProvider: Successfully created and tested client", file=sys.stderr)
+            # Test with a simple API call (just try to use the client)
+            # Don't call list_foundation_models - it doesn't exist on bedrock-runtime
+            print(f"DEBUG BedrockProvider: Client created successfully", file=sys.stderr)
             return True
         except Exception as e:
             print(f"DEBUG BedrockProvider: Error - {type(e).__name__}: {str(e)}", file=sys.stderr)

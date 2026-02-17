@@ -167,16 +167,17 @@ class ClawServant:
         return max(f.stat().st_mtime for f in brain_files)
     
     def _load_brain(self) -> str:
-        """Load all brain files from brain/ folder."""
+        """Load all brain files from brain/ folder in alphabetical order."""
         brain_content = ""
         
         if not BRAIN_DIR.exists():
             return brain_content
         
-        brain_files = list(BRAIN_DIR.glob("*.md")) + list(BRAIN_DIR.glob("*.txt"))
+        # Get all .md and .txt files, sorted alphabetically
+        brain_files = sorted(list(BRAIN_DIR.glob("*.md")) + list(BRAIN_DIR.glob("*.txt")))
         if brain_files:
-            logger.info(f"Loaded {len(brain_files)} brain files")
-            for brain_file in sorted(brain_files):
+            logger.info(f"Loaded {len(brain_files)} brain files in alphabetical order")
+            for brain_file in brain_files:
                 if brain_file.name.startswith("_"):
                     continue  # Skip readme files
                 with open(brain_file) as f:

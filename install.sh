@@ -10,46 +10,7 @@ echo ""
 echo "ℹ️  ClawServant is designed to be highly portable."
 echo "   All files (code, credentials, memory) stay in ONE folder."
 echo ""
-echo "Current folder: $(pwd)"
-echo ""
-
-# Try to read from terminal
-while true; do
-    if echo -n "👉 Is this the folder where you want ClawServant installed? (yes/no): " && \
-       read -r response < /dev/tty 2>/dev/null; then
-        case "$response" in
-            [Yy][Ee][Ss]|[Yy])
-                break
-                ;;
-            [Nn][Oo]|[Nn])
-                echo ""
-                echo "ℹ️  No problem! Here's what to do:"
-                echo ""
-                echo "1. Create a folder for ClawServant:"
-                echo "   mkdir -p ~/my-research-agent"
-                echo ""
-                echo "2. Navigate into it:"
-                echo "   cd ~/my-research-agent"
-                echo ""
-                echo "3. Run the installer again:"
-                echo "   curl -fsSL https://github.com/mayur-dot-ai/ClawServant/raw/main/install.sh | bash"
-                echo ""
-                exit 0
-                ;;
-            *)
-                echo "Please answer yes or no"
-                ;;
-        esac
-    else
-        # If we can't read from /dev/tty, assume yes (running in pipe)
-        echo ""
-        echo "(Continuing with directory: $(pwd))"
-        break
-    fi
-done
-
-echo ""
-echo "✅ Great! Let's set up ClawServant here..."
+echo "Installation folder: $(pwd)"
 echo ""
 
 # Check prerequisites
@@ -83,6 +44,8 @@ else
 fi
 
 # Run setup wizard
+echo ""
+echo "Starting configuration wizard..."
 echo ""
 if ! python3 setup.py; then
     echo ""

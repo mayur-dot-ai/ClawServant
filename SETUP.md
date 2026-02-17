@@ -13,7 +13,18 @@ ClawServant supports multiple LLM providers. Choose one or more:
 
 ## 2. Create Your Credentials File
 
-Create `~/.clawservant/credentials.json`:
+Create `credentials.json` in your working directory (where you'll run clawservant.py from):
+
+```bash
+# Go to your work directory
+cd /path/to/my-researcher
+
+# Copy example template
+cp /path/to/clawservant/credentials.json.example ./credentials.json
+
+# Edit credentials.json with your provider config
+vim credentials.json
+```
 
 ### Option A: AWS Bedrock (Recommended for mayur.ai)
 
@@ -153,44 +164,75 @@ ClawServant tries providers in order. If Bedrock is unavailable, it falls back t
 ## 3. Verify Setup
 
 ```bash
-cd ClawServant
+# Make sure you're in your work directory
+cd /path/to/my-researcher
 
 # Check provider status
-python3 clawservant.py --status
+python3 /path/to/clawservant/clawservant.py --status
 
 # Expected output:
 # === LLM Provider Status ===
 # Active provider: None
 # Available providers: ['bedrock']
-# Credentials file: /home/user/.clawservant/credentials.json
+# Credentials file: /path/to/my-researcher/credentials.json
 ```
 
 ## 4. Drop Your First Task
 
 ```bash
-# Create a task
-cat > ~/.clawservant/workspace/tasks/my-task.md << 'EOF'
+# You're already in your work directory, so create a task file here
+cat > tasks/my-task.md << 'EOF'
 # My First Task
 
 Summarize the history of AI from 2020-2026 in 500 words.
 EOF
 
-# Start ClawServant
-python3 clawservant.py --continuous
+# Start ClawServant (point to the script, cwd provides work files)
+python3 /path/to/clawservant/clawservant.py --continuous
 
 # Watch it process the task automatically
-# Results saved to: ~/.clawservant/workspace/results/task_*.json
+# Results saved to: results/task_*.json
 ```
 
 ## 5. Configuration Details
 
 ### Credentials File Location
 
-Default: `~/.clawservant/credentials.json`
+Default: `credentials.json` in the **current working directory** (cwd)
 
-Override:
+This means you must run the script from the directory where `credentials.json` lives:
+```bash
+cd /path/to/my-researcher
+python3 /path/to/clawservant/clawservant.py --task "Your task"
+```
+
+Override with environment variable:
+```bash
+export CLAWSERVANT_WORK_DIR=/custom/work/path
+python3 clawservant.py --task "Your task"
+```
+
+Or command-line flag (if added):
 ```bash
 python3 clawservant.py --credentials /path/to/credentials.json --task "Your task"
+```
+
+### Work Directory Location
+
+Default: Current working directory (cwd) — wherever you run the script from
+
+This enables true portability:
+- Clone clawservant repo to `/tools/clawservant/`
+- Create work dir `/work/researcher1/` with its own credentials.json
+- Run: `cd /work/researcher1 && python3 /tools/clawservant/clawservant.py`
+- Create work dir `/work/researcher2/` with its own credentials.json
+- Run: `cd /work/researcher2 && python3 /tools/clawservant/clawservant.py`
+- Both instances run simultaneously without interference
+
+Override with environment variable:
+```bash
+export CLAWSERVANT_WORK_DIR=/custom/work/path
+python3 clawservant.py --continuous
 ```
 
 ### Provider Fallback Order
@@ -205,17 +247,38 @@ ClawServant tries providers in the order listed in `fallback_order`:
 
 If `bedrock` fails (missing credentials, rate limit, etc.), it tries `anthropic`, then `openai`, etc.
 
-### Workspace Structure
+### Installation Structure
 
 ```
-~/.clawservant/
-├── workspace/
-│   ├── memory.jsonl      # All thoughts (append-only)
-│   ├── state.json        # Cycle/task tracking
-│   ├── tasks/            # Drop .md files here
-│   └── results/          # Task outputs (.json)
-└── credentials.json      # Your provider config
+/tools/clawservant/          # Repo clone (shared code)
+├── clawservant.py
+├── providers.py
+├── start.sh
+├── credentials.json.example
+└── README.md
+
+/work/researcher1/           # Instance 1 (work dir)
+├── credentials.json
+├── memory.jsonl
+├── state.json
+├── tasks/
+├── results/
+├── brain/
+├── personality/
+└── rules/
+
+/work/researcher2/           # Instance 2 (work dir)
+├── credentials.json
+├── memory.jsonl
+├── state.json
+├── tasks/
+├── results/
+├── brain/
+├── personality/
+└── rules/
 ```
+
+All instances use the same code, different work directories.
 
 ## 6. Common Issues
 

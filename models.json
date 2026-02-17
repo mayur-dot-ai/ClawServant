@@ -1,0 +1,194 @@
+{
+  "bedrock": {
+    "name": "AWS Bedrock",
+    "description": "AWS-managed LLMs with enterprise support",
+    "models": [
+      {
+        "id": "us.anthropic.claude-opus-4-1-20250805-v1:0",
+        "name": "Claude Opus 4.1",
+        "description": "Most capable, best for complex reasoning",
+        "costTier": "premium"
+      },
+      {
+        "id": "us.anthropic.claude-3-5-sonnet-20241022-v1:0",
+        "name": "Claude 3.5 Sonnet",
+        "description": "Balanced performance and cost",
+        "costTier": "mid"
+      },
+      {
+        "id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+        "name": "Claude Haiku 4.5",
+        "description": "Fast and affordable",
+        "costTier": "budget"
+      },
+      {
+        "id": "us.anthropic.claude-3-haiku-20240307-v1:0",
+        "name": "Claude 3 Haiku",
+        "description": "Legacy Haiku model",
+        "costTier": "budget"
+      },
+      {
+        "id": "us.anthropic.llama-3-1-405b-v1:0",
+        "name": "Llama 3.1 405B",
+        "description": "Open-source model, very capable",
+        "costTier": "mid"
+      },
+      {
+        "id": "us.anthropic.llama-3-1-70b-v1:0",
+        "name": "Llama 3.1 70B",
+        "description": "Open-source, balanced",
+        "costTier": "budget"
+      },
+      {
+        "id": "us.anthropic.mistral-large-2407-v1:0",
+        "name": "Mistral Large",
+        "description": "Multilingual, fast reasoning",
+        "costTier": "mid"
+      },
+      {
+        "id": "us.anthropic.mistral-7b-v1:0",
+        "name": "Mistral 7B",
+        "description": "Lightweight open-source",
+        "costTier": "budget"
+      }
+    ]
+  },
+  "anthropic": {
+    "name": "Anthropic",
+    "description": "Direct API to Anthropic's Claude models",
+    "models": [
+      {
+        "id": "claude-opus-4-1-20250805",
+        "name": "Claude Opus 4.1",
+        "description": "Most capable for complex tasks",
+        "costTier": "premium"
+      },
+      {
+        "id": "claude-3-5-sonnet-20241022",
+        "name": "Claude 3.5 Sonnet",
+        "description": "Recommended for most use cases",
+        "costTier": "mid"
+      },
+      {
+        "id": "claude-3-5-haiku-20241022",
+        "name": "Claude 3.5 Haiku",
+        "description": "Fast and affordable",
+        "costTier": "budget"
+      },
+      {
+        "id": "claude-3-opus-20240229",
+        "name": "Claude 3 Opus",
+        "description": "Legacy Opus model",
+        "costTier": "premium"
+      }
+    ]
+  },
+  "openai": {
+    "name": "OpenAI",
+    "description": "GPT models via OpenAI API",
+    "models": [
+      {
+        "id": "gpt-4o",
+        "name": "GPT-4o",
+        "description": "Latest and most capable",
+        "costTier": "premium"
+      },
+      {
+        "id": "gpt-4o-mini",
+        "name": "GPT-4o Mini",
+        "description": "Fast and affordable",
+        "costTier": "budget"
+      },
+      {
+        "id": "gpt-4-turbo",
+        "name": "GPT-4 Turbo",
+        "description": "High performance, older version",
+        "costTier": "mid"
+      },
+      {
+        "id": "o1",
+        "name": "o1",
+        "description": "Advanced reasoning (slower)",
+        "costTier": "premium"
+      },
+      {
+        "id": "o1-mini",
+        "name": "o1 Mini",
+        "description": "Faster reasoning variant",
+        "costTier": "mid"
+      }
+    ]
+  },
+  "openrouter": {
+    "name": "OpenRouter",
+    "description": "Unified API for 200+ models",
+    "models": [
+      {
+        "id": "openrouter/moonshotai/kimi-k2.5",
+        "name": "Kimi K2.5",
+        "description": "Chinese LLM, multilingual",
+        "costTier": "budget"
+      },
+      {
+        "id": "openrouter/anthropic/claude-opus-4.1",
+        "name": "Claude Opus 4.1",
+        "description": "Via OpenRouter",
+        "costTier": "mid"
+      },
+      {
+        "id": "openrouter/openai/gpt-4-turbo",
+        "name": "GPT-4 Turbo",
+        "description": "Via OpenRouter",
+        "costTier": "mid"
+      },
+      {
+        "id": "openrouter/meta-llama/llama-3.1-405b",
+        "name": "Llama 3.1 405B",
+        "description": "Open-source via OpenRouter",
+        "costTier": "budget"
+      }
+    ]
+  },
+  "ollama": {
+    "name": "Ollama",
+    "description": "Local LLMs (free, offline)",
+    "models": [
+      {
+        "id": "llama2",
+        "name": "Llama 2",
+        "description": "Meta's open-source, popular",
+        "costTier": "free"
+      },
+      {
+        "id": "mistral",
+        "name": "Mistral 7B",
+        "description": "Lightweight, fast",
+        "costTier": "free"
+      },
+      {
+        "id": "neural-chat",
+        "name": "Neural Chat",
+        "description": "Optimized for conversation",
+        "costTier": "free"
+      },
+      {
+        "id": "zephyr",
+        "name": "Zephyr",
+        "description": "Instruction-tuned, capable",
+        "costTier": "free"
+      },
+      {
+        "id": "openchat",
+        "name": "OpenChat",
+        "description": "Efficient, good quality",
+        "costTier": "free"
+      },
+      {
+        "id": "orca-mini",
+        "name": "Orca Mini",
+        "description": "Small but capable",
+        "costTier": "free"
+      }
+    ]
+  }
+}

@@ -37,16 +37,37 @@ logging.basicConfig(
 )
 logger = logging.getLogger("clawservant")
 
-# Configuration
-WORK_DIR = Path.home() / ".clawservant"
-MEMORY_FILE = WORK_DIR / "memory.jsonl"
-STATE_FILE = WORK_DIR / "state.json"
-TASKS_DIR = WORK_DIR / "tasks"
-RESULTS_DIR = WORK_DIR / "results"
-BRAIN_DIR = WORK_DIR / "brain"
+def get_work_dir() -> Path:
+    """Get work directory, supporting CLAWSERVANT_WORK_DIR override."""
+    return Path(os.getenv("CLAWSERVANT_WORK_DIR", str(Path.home() / ".clawservant")))
+
+def get_paths():
+    """Get all paths dynamically to support runtime overrides."""
+    work_dir = get_work_dir()
+    return {
+        "work_dir": work_dir,
+        "memory": work_dir / "memory.jsonl",
+        "state": work_dir / "state.json",
+        "tasks": work_dir / "tasks",
+        "results": work_dir / "results",
+        "brain": work_dir / "brain",
+        "personality": work_dir / "personality",
+        "rules": work_dir / "rules",
+    }
+
+# Initialize paths at startup
+PATHS = get_paths()
+WORK_DIR = PATHS["work_dir"]
+MEMORY_FILE = PATHS["memory"]
+STATE_FILE = PATHS["state"]
+TASKS_DIR = PATHS["tasks"]
+RESULTS_DIR = PATHS["results"]
+BRAIN_DIR = PATHS["brain"]
+PERSONALITY_DIR = PATHS["personality"]
+RULES_DIR = PATHS["rules"]
 
 # Ensure directories exist
-for d in [WORK_DIR, TASKS_DIR, RESULTS_DIR, BRAIN_DIR]:
+for d in [WORK_DIR, TASKS_DIR, RESULTS_DIR, BRAIN_DIR, PERSONALITY_DIR, RULES_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 # Provider manager (global, initialized at startup)
@@ -96,9 +117,10 @@ class ClawServant:
         self.name = name
         self.memory = Memory()
         self.state = self._load_state()
-        self.core_identity = self._load_core()
+        self.personality = self._load_personality()
+        self.rules = self._load_rules()
         self.brain = self._load_brain()
-        self.brain_mtime = self._get_brain_mtime()  # Track when brain was last loaded
+        self.brain_mtime = self._get_brain_mtime()
         self.current_task = None
         logger.info(f"ClawServant ({self.name}) initialized")
     
@@ -114,12 +136,21 @@ class ClawServant:
             "tasks_completed": 0,
         }
     
-    def _load_core(self) -> str:
-        """Load core identity file if it exists."""
-        core_file = WORK_DIR / "core.md"
-        if core_file.exists():
-            with open(core_file) as f:
-                logger.info("Loaded core identity from core.md")
+    def _load_personality(self) -> str:
+        """Load personality file from personality/ folder."""
+        personality_file = WORK_DIR / "personality" / "personality.md"
+        if personality_file.exists():
+            with open(personality_file) as f:
+                logger.info("Loaded personality from personality/personality.md")
+                return f.read()
+        return ""
+    
+    def _load_rules(self) -> str:
+        """Load rules file (if/then behavior guidelines)."""
+        rules_file = WORK_DIR / "rules" / "rules.md"
+        if rules_file.exists():
+            with open(rules_file) as f:
+                logger.info("Loaded rules from rules/rules.md")
                 return f.read()
         return ""
     
@@ -177,9 +208,9 @@ class ClawServant:
 
 """
         
-        # Add core identity if available
-        if self.core_identity:
-            system_prompt += f"## Your Identity\n{self.core_identity}\n\n"
+        # Add personality if available
+        if self.personality:
+            system_prompt += f"## Your Personality\n{self.personality}\n\n"
         else:
             system_prompt += f"""Your role:
 - Think deeply about problems
@@ -188,6 +219,10 @@ class ClawServant:
 - Output clear, actionable results
 
 """
+        
+        # Add rules (behavior guidelines)
+        if self.rules:
+            system_prompt += f"## Your Rules\n{self.rules}\n\n"
         
         # Add brain/knowledge files
         if self.brain:
@@ -308,7 +343,20 @@ Tasks completed: {self.state['tasks_completed']}
 
 
 async def main():
-    global provider_manager
+    global provider_manager, PATHS, WORK_DIR, MEMORY_FILE, STATE_FILE, TASKS_DIR, RESULTS_DIR, BRAIN_DIR
+    
+    # Re-initialize paths to support runtime CLAWSERVANT_WORK_DIR override
+    PATHS = get_paths()
+    WORK_DIR = PATHS["work_dir"]
+    MEMORY_FILE = PATHS["memory"]
+    STATE_FILE = PATHS["state"]
+    TASKS_DIR = PATHS["tasks"]
+    RESULTS_DIR = PATHS["results"]
+    BRAIN_DIR = PATHS["brain"]
+    
+    # Ensure directories exist
+    for d in [WORK_DIR, TASKS_DIR, RESULTS_DIR, BRAIN_DIR]:
+        d.mkdir(parents=True, exist_ok=True)
     
     parser = argparse.ArgumentParser(description="ClawServant — CLI specialist agent")
     parser.add_argument("--task", type=str, help="Process a single task")

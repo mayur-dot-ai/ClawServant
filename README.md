@@ -112,21 +112,44 @@ python3 clawservant.py --continuous
 
 ## Portability
 
-ClawServant is designed to run from **any directory**:
+ClawServant is designed to run from **any directory**. Each installation is self-contained.
+
+**To run ClawServant:**
+
+1. Navigate to the folder where you installed it:
+```bash
+cd /path/to/your/clawservant
+```
+
+2. Run the Python script:
+```bash
+python3 clawservant.py --continuous
+```
+
+**Running multiple instances:**
+
+Each instance gets its own folder with separate credentials and memory:
 
 ```bash
 # Instance 1: Research agent
 cd /work/researcher1
-python3 /path/to/ClawServant/clawservant.py --continuous
+python3 clawservant.py --continuous
 
 # Instance 2: Developer agent  
 cd /work/researcher2
-python3 /path/to/ClawServant/clawservant.py --continuous
+python3 clawservant.py --continuous
 ```
 
-Each instance uses its own `credentials.json` and memory files. No global state, no conflicts.
+Each folder has its own:
+- `credentials.json` (API keys/config)
+- `memory.jsonl` (persistent memory)
+- `tasks/`, `results/`, `brain/`, etc.
 
-To use a different work directory:
+No global state, no conflicts. They run completely independently.
+
+**Optional: Custom work directory**
+
+If you want credentials and memory in a different location:
 ```bash
 export CLAWSERVANT_WORK_DIR=/custom/path
 python3 clawservant.py --continuous

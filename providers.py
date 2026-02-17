@@ -39,27 +39,21 @@ class BedrockProvider(LLMProvider):
     
     def is_available(self) -> bool:
         """Check if AWS credentials are configured in credentials.json."""
-        import sys
         # ONLY use credentials from config file (fully portable)
         if not (self.access_key and self.secret_key):
-            print(f"DEBUG BedrockProvider: Missing credentials - access_key={bool(self.access_key)}, secret_key={bool(self.secret_key)}", file=sys.stderr)
             return False
         
         try:
             import boto3
-            print(f"DEBUG BedrockProvider: Creating client with region={self.region}", file=sys.stderr)
             self.client = boto3.client(
                 "bedrock-runtime",
                 region_name=self.region,
                 aws_access_key_id=self.access_key,
                 aws_secret_access_key=self.secret_key,
             )
-            # Test with a simple API call (just try to use the client)
-            # Don't call list_foundation_models - it doesn't exist on bedrock-runtime
-            print(f"DEBUG BedrockProvider: Client created successfully", file=sys.stderr)
+            # Client created successfully
             return True
-        except Exception as e:
-            print(f"DEBUG BedrockProvider: Error - {type(e).__name__}: {str(e)}", file=sys.stderr)
+        except Exception:
             return False
     
     async def call(self, system_prompt: str, user_prompt: str, max_tokens: int = 500) -> str:
@@ -241,17 +235,10 @@ class ProviderManager:
         providers = {}
         provider_configs = {p["name"]: p["config"] for p in self.config.get("providers", [])}
         
-        import sys
-        print(f"DEBUG: Found {len(provider_configs)} provider configs", file=sys.stderr)
-        for name in provider_configs:
-            print(f"DEBUG: Provider config: {name}", file=sys.stderr)
-        
         for name, provider_class in PROVIDERS.items():
             config = provider_configs.get(name, {})
             provider = provider_class(config)
-            available = provider.is_available()
-            print(f"DEBUG: {name} available={available}, config={bool(config)}", file=sys.stderr)
-            if available:
+            if provider.is_available():
                 providers[name] = provider
         
         return providers

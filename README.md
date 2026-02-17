@@ -358,3 +358,174 @@ MIT — Use, modify, and distribute freely.
 **Powered by:** AWS Bedrock + Claude  
 **Status:** Production ready (Feb 2026)  
 **For:** OpenClaw installations and autonomous AI workflows
+
+---
+
+## FAQ
+
+### Q: Can I use multiple providers with fallback?
+
+**A:** Yes! In `setup.py`, choose "Multiple providers (with fallback)" option. ClawServant will try each in order until one works.
+
+Edit `credentials.json` to set priority:
+```json
+{
+  "providers": [
+    { "name": "bedrock", ... },
+    { "name": "anthropic", ... }
+  ],
+  "fallback_order": ["bedrock", "anthropic"]
+}
+```
+
+### Q: How portable is this really?
+
+**A:** Completely! Everything lives in one folder:
+- `credentials.json` — Your API keys
+- `memory.jsonl` — Your memories
+- `tasks/`, `results/`, etc. — Your data
+
+Copy the folder anywhere, run `python3 clawservant.py`, it just works. No global state, no ~/.clawservant folder, no environment variables needed.
+
+### Q: Can I run multiple instances simultaneously?
+
+**A:** Yes! Each folder is independent. Create separate directories:
+```bash
+mkdir researcher1 researcher2
+cd researcher1
+git clone https://github.com/mayur-dot-ai/ClawServant.git .
+python3 setup.py
+# Each has its own credentials, memory, and state
+```
+
+### Q: What's the cost?
+
+**A:** Depends on model and usage:
+
+| Model | Cost | Ideal For |
+|-------|------|-----------|
+| Bedrock Haiku 4.5 | ~$0.20-0.30/hr (24/7) | Budget, continuous work |
+| Bedrock Sonnet | ~$0.80/hr (24/7) | Balanced reasoning |
+| OpenAI GPT-4o | ~$1.50/hr (24/7) | Premium reasoning |
+| Ollama Local | Free | Offline, no API cost |
+
+### Q: Can I customize the system prompt?
+
+**A:** Yes! Edit `personality/personality.md` and `rules/rules.md`:
+- `personality.md` — How the agent thinks and behaves
+- `rules/rules.md` — Guidelines and constraints
+
+Changes take effect on next task.
+
+### Q: Where does memory persist?
+
+**A:** Two places:
+- `memory.jsonl` — Long-term memory (survives restarts)
+- `brain/` — Brain files (persistent knowledge base)
+
+Memory is searchable and human-readable (JSONL format).
+
+### Q: How do I stop a running task?
+
+**A:** Just delete the task file:
+```bash
+rm tasks/task_*.md
+```
+
+ClawServant checks for task file before starting each cycle.
+
+### Q: Can I integrate with OpenClaw's webhook system?
+
+**A:** Not yet, but planned! For now, use file-based task queue.
+
+### Q: Is ClawServant secure?
+
+**A:** Credentials are stored locally in `credentials.json`. Best practices:
+- Never commit `credentials.json` to git (it's in `.gitignore`)
+- Don't share your ClawServant folder (it has your API keys)
+- Rotate credentials periodically
+- Use dedicated API keys with minimal permissions when possible
+
+---
+
+## Extended Troubleshooting
+
+### "ModuleNotFoundError: No module named 'boto3'"
+
+**Problem:** You're using AWS Bedrock but boto3 isn't installed.
+
+**Solution:**
+```bash
+pip3 install boto3
+```
+
+All required packages:
+```bash
+pip3 install boto3 anthropic openai httpx
+```
+
+### "Credentials showing but provider says unavailable"
+
+**Problem:** credentials.json has credentials but provider won't connect.
+
+**For AWS Bedrock:**
+- Verify AWS Access Key ID is correct
+- Verify AWS Secret Access Key is complete (not truncated)
+- Check region is supported (usually `us-east-1`)
+- Ensure your AWS account has Bedrock API access enabled
+- Try: `python3 -c "import boto3; boto3.client('bedrock-runtime', region_name='us-east-1')"`
+
+**For Anthropic/OpenAI:**
+- Verify API key is correct (copy fresh from provider's dashboard)
+- Check API key hasn't been revoked or rate-limited
+- Try the API key in another tool first to verify it works
+
+### "Task stuck in tasks/ folder"
+
+**Problem:** Task file isn't being processed.
+
+**Solution:** Make sure filename follows pattern: `task_*.md` or `task_*.txt`
+
+**Debug:**
+```bash
+ls -la tasks/
+python3 clawservant.py --status
+# Check if task is actually being found
+```
+
+### "Memory file too large"
+
+**Problem:** `memory.jsonl` growing too fast.
+
+**Solution:**
+```bash
+# Archive old memories
+mv memory.jsonl memory.archive.jsonl
+touch memory.jsonl
+
+# Keep only recent
+tail -500 memory.archive.jsonl > memory.jsonl
+```
+
+### "Invalid credentials.json"
+
+**Problem:** JSON parsing error.
+
+**Solution:** Validate your JSON:
+```bash
+python3 -m json.tool credentials.json
+```
+
+If it fails, check for:
+- Trailing commas (not allowed in JSON)
+- Missing quotes around keys
+- Unescaped special characters in values
+
+### "DeprecationWarning about datetime"
+
+**Problem:** You see warnings about `datetime.utcnow()` (older versions only).
+
+**Solution:** Update to latest version:
+```bash
+git pull origin main
+```

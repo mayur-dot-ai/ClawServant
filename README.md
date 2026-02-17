@@ -52,6 +52,7 @@ ClawServant builds on lessons learned from [HermitClaw](https://github.com/openc
 
 ```bash
 curl -fsSL https://github.com/mayur-dot-ai/ClawServant/raw/main/install.sh | bash
+python3 setup.py
 ```
 
 This will:
@@ -59,7 +60,33 @@ This will:
 2. Run an interactive setup wizard
 3. Configure your LLM provider (30+ models across multiple providers)
 4. Create folders and credentials.json
-5. Verify the setup works
+5. Install required dependencies
+6. Verify the setup works
+
+### Prerequisites
+
+Before running ClawServant, make sure you have Python 3.9+ and pip3 installed.
+
+**Required Python packages** (installed automatically by setup.py or manually):
+
+```bash
+# For AWS Bedrock support
+pip3 install boto3
+
+# For Anthropic API support
+pip3 install anthropic
+
+# For OpenAI API support
+pip3 install openai
+
+# For OpenRouter support
+pip3 install httpx
+```
+
+Or install all at once:
+```bash
+pip3 install boto3 anthropic openai httpx
+```
 
 ### Option 2: Manual Setup
 

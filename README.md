@@ -42,8 +42,9 @@ cd ClawServant
 
 ### 2. Configure Your LLM
 
-Create `~/.clawservant/credentials.json`:
+Create `~/.clawservant/credentials.json` with your provider:
 
+**AWS Bedrock:**
 ```json
 {
   "providers": [
@@ -56,11 +57,72 @@ Create `~/.clawservant/credentials.json`:
       }
     }
   ],
+  "fallback_order": ["bedrock"]
+}
+```
+
+**Anthropic API:**
+```json
+{
+  "providers": [
+    {
+      "name": "anthropic",
+      "enabled": true,
+      "config": {
+        "model": "claude-3-5-sonnet-20241022"
+      }
+    }
+  ],
+  "fallback_order": ["anthropic"]
+}
+```
+
+**OpenAI:**
+```json
+{
+  "providers": [
+    {
+      "name": "openai",
+      "enabled": true,
+      "config": {
+        "model": "gpt-4o-mini"
+      }
+    }
+  ],
+  "fallback_order": ["openai"]
+}
+```
+
+**Local Ollama:**
+```json
+{
+  "providers": [
+    {
+      "name": "ollama",
+      "enabled": true,
+      "config": {
+        "base_url": "http://localhost:11434",
+        "model": "llama2"
+      }
+    }
+  ],
+  "fallback_order": ["ollama"]
+}
+```
+
+**Multiple providers (fallback):**
+```json
+{
+  "providers": [
+    {"name": "bedrock", "enabled": true, "config": {...}},
+    {"name": "anthropic", "enabled": true, "config": {...}},
+    {"name": "openai", "enabled": true, "config": {...}}
+  ],
   "fallback_order": ["bedrock", "anthropic", "openai", "ollama"]
 }
 ```
 
-See [SETUP.md](./SETUP.md) for all provider options.
+See [SETUP.md](./SETUP.md) for complete setup guide for all providers.
 
 ### 3. Run
 

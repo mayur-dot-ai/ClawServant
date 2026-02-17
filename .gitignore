@@ -1,8 +1,35 @@
-node_modules/
-*.log
-*.json
-!credentials.json.example
-workspace/
-.DS_Store
+# Work directories (user-specific, should not be committed)
+tasks/
+results/
+brain/
+personality/
+rules/
+
+# Runtime files (auto-generated)
+memory.jsonl
+state.json
+
+# Credentials (users should have their own)
+credentials.json
+.credentials.json
+
+# Python
 __pycache__/
-MULTI_AGENT_TEST_RESULTS.md
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+clawservant-continuous.log

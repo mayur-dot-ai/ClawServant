@@ -31,6 +31,8 @@ if [ ! -f "clawservant.py" ]; then
     git clone https://github.com/mayur-dot-ai/ClawServant.git . || exit 1
 fi
 
-# Setup
 echo ""
-exec python3 setup.py
+echo "⚠️  To complete setup, run:"
+echo "   python3 setup.py"
+echo ""
+echo "This will guide you through provider selection and configuration."

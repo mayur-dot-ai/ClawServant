@@ -4,3 +4,4 @@ node_modules/
 !credentials.json.example
 workspace/
 .DS_Store
+__pycache__/

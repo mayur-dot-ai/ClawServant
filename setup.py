@@ -15,8 +15,18 @@ from typing import Dict, Any, List
 SCRIPT_DIR = Path(__file__).parent
 MODELS_FILE = SCRIPT_DIR / "models.json"
 
-with open(MODELS_FILE) as f:
-    MODELS_DB = json.load(f)
+if not MODELS_FILE.exists():
+    print("❌ Error: models.json not found")
+    print(f"   Expected at: {MODELS_FILE}")
+    print("   Make sure you cloned the full repository")
+    sys.exit(1)
+
+try:
+    with open(MODELS_FILE) as f:
+        MODELS_DB = json.load(f)
+except json.JSONDecodeError as e:
+    print(f"❌ Error: models.json is invalid JSON: {e}")
+    sys.exit(1)
 
 def print_header(text: str):
     """Print section header."""
@@ -234,14 +244,24 @@ def main():
         result = subprocess.run(
             ["python3", "clawservant.py", "--status"],
             capture_output=True,
-            timeout=10
+            timeout=10,
+            text=True
         )
         if result.returncode == 0:
             print("✅ Setup verified!")
         else:
-            print("⚠️  Provider not available yet (this is OK if credentials aren't active)")
+            error_msg = result.stderr if result.stderr else "Unknown error"
+            if "No LLM providers available" in error_msg:
+                print("⚠️  Provider credentials not configured yet")
+                print("   This is normal - configure them in credentials.json")
+            else:
+                print(f"⚠️  Setup test returned error (OK if credentials aren't active)")
+                print(f"   Details: {error_msg[:100]}")
+    except subprocess.TimeoutExpired:
+        print("⚠️  Test timed out (provider may be slow)")
     except Exception as e:
         print(f"⚠️  Could not test: {e}")
+        print("   You can test manually: python3 clawservant.py --status")
     
     # Success message
     print_header("✅ ClawServant Ready!")

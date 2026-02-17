@@ -153,7 +153,9 @@ Then **stop here** and check with your human operator. You need those capabiliti
 
 6. Customize personality folder, rules folder, and brain folder.
 
-7. Run any of the commands below that you prefer to use.
+7. Test it with a single task (like "What's the capital of Italy?") to verify it works.
+
+8. Run any of the commands below that you prefer to use.
 
 ### Available Commands
 

@@ -35,7 +35,7 @@ def print_header(text: str):
 
 def get_input(prompt: str, default: str = None) -> str:
     """Get user input with optional default. Silent if EOF."""
-    if default:
+    if default is not None:
         display = f"{prompt} [{default}]: "
     else:
         display = f"{prompt}: "
@@ -45,9 +45,10 @@ def get_input(prompt: str, default: str = None) -> str:
         return value if value else default
     except EOFError:
         # Piped mode - use default silently
-        if default:
+        if default is not None:
             return default
-        raise RuntimeError(f"No input for: {prompt}")
+        # No default and no input - this is an error
+        raise RuntimeError(f"Interactive input required: {prompt}")
 
 def get_secret(prompt: str) -> str:
     """Get secret input (hidden)."""
@@ -87,8 +88,14 @@ def setup_bedrock() -> Dict[str, Any]:
     print("\n⚠️  You need AWS credentials (Access Key ID + Secret Access Key)")
     print("   Get them from: https://console.aws.amazon.com/iam/home?#/security_credentials")
     
-    access_key = get_input("AWS Access Key ID", "")
-    secret_key = get_secret("AWS Secret Access Key")
+    try:
+        access_key = get_input("AWS Access Key ID")
+        secret_key = get_secret("AWS Secret Access Key")
+    except RuntimeError:
+        # Piped mode - can't get interactive input
+        print("⚠️  Skipping Bedrock (requires interactive input for credentials)")
+        return None
+    
     region = get_input("AWS Region", "us-east-1")
     model_id = select_model("bedrock")
     
@@ -205,7 +212,7 @@ def main():
     print(f"  {len(provider_list)+1}) Multiple providers (with fallback)")
     print(f"  0) Exit")
     
-    choice = get_input(f"Choice (0-{len(provider_list)+1})", "1")
+    choice = get_input(f"Choice (0-{len(provider_list)+1})", "2")  # Default to Anthropic (index 2)
     
     providers = []
     fallback_order = []
@@ -228,14 +235,21 @@ def main():
                 break
             elif sub_choice in provider_map:
                 name, setup_func = provider_map[sub_choice]
-                providers.append(setup_func())
-                if name not in fallback_order:
-                    fallback_order.append(name)
+                result = setup_func()
+                if result is not None:  # Skip if setup returned None
+                    providers.append(result)
+                    if name not in fallback_order:
+                        fallback_order.append(name)
     elif choice in provider_map:
         # Single provider
         name, setup_func = provider_map[choice]
-        providers.append(setup_func())
-        fallback_order = [name]
+        result = setup_func()
+        if result is not None:
+            providers.append(result)
+            fallback_order = [name]
+        else:
+            print("❌ Provider configuration failed")
+            return
     
     if not providers:
         print("❌ No providers selected")

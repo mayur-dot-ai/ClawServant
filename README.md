@@ -297,10 +297,10 @@ for r in results:
 │   ├── domain-knowledge.md
 │   ├── coding-standards.md
 │   └── research-methodology.md
-├── memory.jsonl              # Persistent memories (auto-generated)
-├── state.json                # Agent state (auto-generated)
 ├── tasks/                    # Task queue (you drop .md files)
-└── results/                  # Task outputs (auto-generated)
+├── results/                  # Task outputs (auto-generated)
+├── memory.jsonl              # Persistent memories (auto-generated)
+└── state.json                # Agent state (auto-generated)
 ```
 
 ### Core Personality File

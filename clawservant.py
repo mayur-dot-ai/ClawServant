@@ -97,6 +97,7 @@ class ClawServant:
         self.state = self._load_state()
         self.core_identity = self._load_core()
         self.brain = self._load_brain()
+        self.brain_mtime = self._get_brain_mtime()  # Track when brain was last loaded
         self.current_task = None
         logger.info(f"ClawServant ({self.name}) initialized")
     
@@ -121,6 +122,19 @@ class ClawServant:
                 return f.read()
         return ""
     
+    def _get_brain_mtime(self) -> float:
+        """Get the latest modification time in brain folder."""
+        brain_dir = WORK_DIR / "brain"
+        if not brain_dir.exists():
+            return 0
+        
+        brain_files = list(brain_dir.glob("*.md")) + list(brain_dir.glob("*.txt"))
+        if not brain_files:
+            return 0
+        
+        # Return the most recent mtime
+        return max(f.stat().st_mtime for f in brain_files)
+    
     def _load_brain(self) -> str:
         """Load all brain files from brain/ folder."""
         brain_dir = WORK_DIR / "brain"
@@ -139,6 +153,16 @@ class ClawServant:
                     brain_content += f"\n\n## {brain_file.stem}\n{f.read()}"
         
         return brain_content
+    
+    def _check_brain_updated(self) -> bool:
+        """Check if brain files have been updated since last load."""
+        current_mtime = self._get_brain_mtime()
+        if current_mtime > self.brain_mtime:
+            logger.info("Brain files updated, reloading...")
+            self.brain = self._load_brain()
+            self.brain_mtime = current_mtime
+            return True
+        return False
     
     def _save_state(self):
         """Save state to file."""
@@ -236,6 +260,9 @@ Tasks completed: {self.state['tasks_completed']}
             if duration and (time.time() - start_time) > duration:
                 logger.info("Duration limit reached, stopping")
                 break
+            
+            # Check for brain file updates
+            self._check_brain_updated()
             
             # Check for new tasks
             task_files = list(TASKS_DIR.glob("*.md"))

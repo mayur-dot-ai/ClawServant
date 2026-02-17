@@ -95,6 +95,8 @@ class ClawServant:
         self.name = name
         self.memory = Memory()
         self.state = self._load_state()
+        self.core_identity = self._load_core()
+        self.brain = self._load_brain()
         self.current_task = None
         logger.info(f"ClawServant ({self.name}) initialized")
     
@@ -110,6 +112,34 @@ class ClawServant:
             "tasks_completed": 0,
         }
     
+    def _load_core(self) -> str:
+        """Load core identity file if it exists."""
+        core_file = WORK_DIR / "core.md"
+        if core_file.exists():
+            with open(core_file) as f:
+                logger.info("Loaded core identity from core.md")
+                return f.read()
+        return ""
+    
+    def _load_brain(self) -> str:
+        """Load all brain files from brain/ folder."""
+        brain_dir = WORK_DIR / "brain"
+        brain_content = ""
+        
+        if not brain_dir.exists():
+            return brain_content
+        
+        brain_files = list(brain_dir.glob("*.md")) + list(brain_dir.glob("*.txt"))
+        if brain_files:
+            logger.info(f"Loaded {len(brain_files)} brain files")
+            for brain_file in sorted(brain_files):
+                if brain_file.name.startswith("_"):
+                    continue  # Skip readme files
+                with open(brain_file) as f:
+                    brain_content += f"\n\n## {brain_file.stem}\n{f.read()}"
+        
+        return brain_content
+    
     def _save_state(self):
         """Save state to file."""
         self.state["cycles"] += 1
@@ -120,19 +150,34 @@ class ClawServant:
     async def think(self, prompt: str) -> str:
         """Call LLM via provider manager (auto-selects available provider)."""
         # Build system prompt
-        system_prompt = f"""You are {self.name}, a specialist AI agent working for mayur.ai.
+        system_prompt = f"""You are {self.name}, a specialist AI agent.
 
-Your role:
+"""
+        
+        # Add core identity if available
+        if self.core_identity:
+            system_prompt += f"## Your Identity\n{self.core_identity}\n\n"
+        else:
+            system_prompt += f"""Your role:
 - Think deeply about problems
 - Remember previous insights (you have access to your memory)
 - Complete tasks methodically
 - Output clear, actionable results
 
-Current time: {datetime.utcnow().isoformat()}
+"""
+        
+        # Add brain/knowledge files
+        if self.brain:
+            system_prompt += f"## Your Knowledge\n{self.brain}\n\n"
+        
+        # Add context
+        system_prompt += f"""## Current Context
+
+Time: {datetime.utcnow().isoformat()}
 Cycle: {self.state['cycles']}
 Tasks completed: {self.state['tasks_completed']}
 
-Recent memories:
+## Recent Memory
 """
         recent = self.memory.recent(n=5)
         for mem in recent:

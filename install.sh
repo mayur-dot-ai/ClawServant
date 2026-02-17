@@ -13,38 +13,54 @@ echo ""
 echo "Current folder: $(pwd)"
 echo ""
 
-# Interactive prompt (works better with piped input)
-while true; do
-    echo -n "👉 Is this the folder where you want ClawServant installed? (yes/no): "
-    read -r response
-    case "$response" in
-        [Yy][Ee][Ss]|[Yy])
-            break
-            ;;
-        [Nn][Oo]|[Nn])
-            echo ""
-            echo "ℹ️  No problem! Here's what to do:"
-            echo ""
-            echo "1. Create a folder for ClawServant:"
-            echo "   mkdir -p ~/my-research-agent"
-            echo ""
-            echo "2. Navigate into it:"
-            echo "   cd ~/my-research-agent"
-            echo ""
-            echo "3. Run the installer again:"
-            echo "   curl -fsSL https://github.com/mayur-dot-ai/ClawServant/raw/main/install.sh | bash"
-            echo ""
-            exit 0
-            ;;
-        *)
-            echo "Please answer yes or no"
-            ;;
-    esac
-done
+# Try to read from /dev/tty if available, otherwise use stdin
+if [ -t 0 ]; then
+    # TTY is available
+    input_source=""
+else
+    # No TTY - explain the issue
+    echo "⚠️  No terminal detected. Running in non-interactive mode."
+    echo ""
+fi
 
-echo ""
-echo "✅ Great! Let's set up ClawServant here..."
-echo ""
+# Function to get user input
+get_yn_response() {
+    while true; do
+        echo -n "👉 Is this the folder where you want ClawServant installed? (yes/no): "
+        read -r response
+        case "$response" in
+            [Yy][Ee][Ss]|[Yy])
+                return 0
+                ;;
+            [Nn][Oo]|[Nn])
+                return 1
+                ;;
+            *)
+                echo "Please answer yes or no"
+                ;;
+        esac
+    done
+}
+
+if get_yn_response; then
+    echo ""
+    echo "✅ Great! Let's set up ClawServant here..."
+    echo ""
+else
+    echo ""
+    echo "ℹ️  No problem! Here's what to do:"
+    echo ""
+    echo "1. Create a folder for ClawServant:"
+    echo "   mkdir -p ~/my-research-agent"
+    echo ""
+    echo "2. Navigate into it:"
+    echo "   cd ~/my-research-agent"
+    echo ""
+    echo "3. Run the installer again:"
+    echo "   curl -fsSL https://github.com/mayur-dot-ai/ClawServant/raw/main/install.sh | bash"
+    echo ""
+    exit 0
+fi
 
 # Check prerequisites
 if ! command -v git &> /dev/null; then

@@ -32,7 +32,9 @@ class BedrockProvider(LLMProvider):
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.region = config.get("region", "us-east-1")
-        self.model_id = config.get("model_id", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
+        # Model ID should be specified in credentials.json
+        # User can choose: Haiku 3.5, Opus, or any available model
+        self.model_id = config.get("model_id")
         self.client = None
     
     def is_available(self) -> bool:

@@ -32,13 +32,30 @@ class BedrockProvider(LLMProvider):
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.region = config.get("region", "us-east-1")
-        # Model ID should be specified in credentials.json
-        # User can choose: Haiku 3.5, Opus, or any available model
         self.model_id = config.get("model_id")
+        self.access_key = config.get("access_key")
+        self.secret_key = config.get("secret_key")
         self.client = None
     
     def is_available(self) -> bool:
         """Check if AWS credentials are configured."""
+        # If credentials provided in config, use those
+        if self.access_key and self.secret_key:
+            try:
+                import boto3
+                self.client = boto3.client(
+                    "bedrock-runtime",
+                    region_name=self.region,
+                    aws_access_key_id=self.access_key,
+                    aws_secret_access_key=self.secret_key,
+                )
+                # Test with a simple API call
+                self.client.list_foundation_models()
+                return True
+            except Exception:
+                return False
+        
+        # Otherwise check environment variables
         has_env_creds = os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY")
         has_aws_file = os.path.exists(os.path.expanduser("~/.aws/credentials"))
         
@@ -52,8 +69,7 @@ class BedrockProvider(LLMProvider):
             # Test with a simple describe call
             self.client.list_foundation_models()
             return True
-        except Exception as e:
-            # Credentials exist but are invalid or Bedrock not accessible
+        except Exception:
             return False
     
     async def call(self, system_prompt: str, user_prompt: str, max_tokens: int = 500) -> str:

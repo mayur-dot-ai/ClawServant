@@ -61,6 +61,17 @@ Create `~/.clawservant/credentials.json` with your provider:
 }
 ```
 
+**Or customize the model ID:**
+```json
+{
+  "name": "bedrock",
+  "config": {
+    "region": "us-east-1",
+    "model_id": "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+  }
+}
+```
+
 **Anthropic API:**
 ```json
 {
@@ -159,7 +170,7 @@ ClawServant saves all output to a local workspace:
 
 ### Core Thinking Cycle
 
-1. **Initialize** — Load memories, personality, and brain files
+1. **Initialize** — Load core personality, brain files, and memories
 2. **Check for tasks** — Scan `tasks/` folder
 3. **Process tasks** — If found, send to LLM with context
 4. **Record results** — Save output, update memory
@@ -167,45 +178,29 @@ ClawServant saves all output to a local workspace:
 6. **Persist** — Save state, append to memory
 7. **Wait** — Sleep for `--interval` seconds, repeat
 
-### Identity System
+### Identity System (Two Parts)
 
-ClawServant has three layers of identity:
+ClawServant has two separate identity layers:
 
 **1. Core Personality (`core.md`)**
-```markdown
-# Your Agent Name
+- WHO the agent is: name, role, expertise, communication style, values
+- Single file at `~/.clawservant/workspace/core.md`
+- Loaded once at startup
+- Defines the agent's personality and principles
+- Example: "I'm a researcher who values accuracy and cites sources"
 
-## Identity
-- Role: [What you do]
-- Expertise: [Your skills]
-- Values: [What matters to you]
+**2. Brain Files (`brain/` folder)**
+- WHAT the agent knows: domain knowledge, guidelines, standards
+- Multiple files in `~/.clawservant/workspace/brain/`
+- Examples: `research-methodology.md`, `coding-standards.md`, `company-values.md`
+- Auto-reloads every cycle (no restart needed if you add/modify files)
+- Each file added to the system prompt automatically
 
-## Behavior
-- Communication style: [How you speak]
-- Decision-making: [How you approach problems]
-- Values in practice: [How you act]
-```
+**Key Difference:**
+- **core.md** = personality (who you are)
+- **brain/** = knowledge (what you know)
 
-**2. Brain Files (`brain/`)**
-Drop any `.md` or `.txt` files here. ClawServant reads them and incorporates knowledge:
-```
-brain/
-├── domain-knowledge.md     # Industry specifics
-├── company-values.md       # Org principles
-├── coding-standards.md     # Technical guidelines
-├── research-methodology.md # How to think about problems
-└── tone-guide.md           # Voice and style
-```
-
-**3. Memory (`memory.jsonl`)**
-Long-term learning from experience:
-```
-- thoughts: Internal reasoning
-- observations: Patterns noticed
-- learnings: Lessons internalized
-- tasks: Work completed
-- results: Outputs generated
-```
+Both are incorporated into the system prompt before each LLM call.
 
 ### Memory Model
 
@@ -298,7 +293,11 @@ for r in results:
 ~/.clawservant/
 ├── credentials.json          # LLM provider config (you create)
 └── workspace/
-    ├── brain/                # Custom knowledge (you add)
+    ├── core.md               # Personality file (WHO you are) - optional
+    ├── brain/                # Knowledge files (WHAT you know) - optional
+    │   ├── domain-knowledge.md
+    │   ├── coding-standards.md
+    │   └── research-methodology.md
     ├── memory.jsonl          # Persistent memories (auto-generated)
     ├── state.json            # Agent state (auto-generated)
     ├── tasks/                # Task queue (you drop .md files)
@@ -307,13 +306,13 @@ for r in results:
 
 ### Core Personality File
 
-Create `~/.clawservant/workspace/core.md`:
+Create `~/.clawservant/workspace/core.md` to define WHO the agent is:
 
 ```markdown
 # [Your Agent Name]
 
 ## Who I Am
-- Role: Researcher / Developer / Security Analyst
+- Role: Researcher / Developer / Analyst
 - Expertise: [Your specializations]
 - Style: [Communication style]
 
@@ -328,9 +327,13 @@ Create `~/.clawservant/workspace/core.md`:
 - Success looks like: [outcomes]
 ```
 
+**This is your agent's personality.** It's included in every LLM call.
+
+See `core.md.example` for a complete template.
+
 ### Custom Brain Files
 
-Add files to `~/.clawservant/workspace/brain/`:
+Create knowledge files in `~/.clawservant/workspace/brain/` to define WHAT the agent knows:
 
 ```bash
 # Create a knowledge base
@@ -348,7 +351,39 @@ echo "# Code Quality Standards
 - Error handling: All exceptions caught" > brain/coding-standards.md
 ```
 
-ClawServant incorporates these files into its system prompt automatically.
+**Any `.md` or `.txt` file in `brain/` is automatically loaded and included in the system prompt.**
+
+**Auto-reload:** If you add or modify brain files while ClawServant is running, they're automatically reloaded each cycle—no restart needed.
+
+### Credentials File
+
+Your LLM provider is configured separately from your personality/knowledge. This keeps them independent.
+
+Create `~/.clawservant/credentials.json`:
+
+```json
+{
+  "providers": [
+    {
+      "name": "bedrock",
+      "enabled": true,
+      "config": {
+        "region": "us-east-1",
+        "model_id": "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+      }
+    }
+  ],
+  "fallback_order": ["bedrock"]
+}
+```
+
+You can customize:
+- `region` (for Bedrock)
+- `model_id` (Bedrock model, e.g., Opus, Sonnet, Haiku)
+- `api_key` (for Anthropic/OpenAI)
+- Multiple providers with fallback
+
+See [SETUP.md](./SETUP.md) for all provider options.
 
 ## Use Cases
 

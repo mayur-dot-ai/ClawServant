@@ -14,6 +14,7 @@ PID=$!
 
 echo "✅ ClawServant started (PID: $PID)"
 echo "   Logs: $SCRIPT_DIR/clawservant-continuous.log"
-echo "   Memory: ~/.clawservant/workspace/memory.jsonl"
+echo "   Memory: $SCRIPT_DIR/memory.jsonl"
+echo "   Work dir: $SCRIPT_DIR"
 echo "   Status: cd $SCRIPT_DIR && python3 clawservant.py --status"
 echo "   View memory: cd $SCRIPT_DIR && python3 clawservant.py --memory"

@@ -243,6 +243,30 @@ Edit `personality/personality.md` to define agent identity.
 Edit `rules/rules.md` to define behavior guidelines.
 Add knowledge files to `brain/` folder.
 
+## Updates
+
+ClawServant is a git repository, so updating is simple:
+
+```bash
+# Navigate to your installation
+cd /path/to/your/clawservant
+
+# Update the code
+bash update.sh
+```
+
+This safely pulls the latest code without touching:
+- `credentials.json` (your API keys)
+- `memory.jsonl` (your memories)
+- `tasks/`, `results/`, `brain/`, etc. (your data)
+
+To manually update:
+```bash
+git pull origin main
+```
+
+Your local files are unaffected since they're in `.gitignore`.
+
 ## Performance
 
 | Metric | Value |

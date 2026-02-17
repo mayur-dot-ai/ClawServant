@@ -18,7 +18,6 @@ MODELS_FILE = SCRIPT_DIR / "models.json"
 if not MODELS_FILE.exists():
     print("❌ Error: models.json not found")
     print(f"   Expected at: {MODELS_FILE}")
-    print("   Make sure you cloned the full repository")
     sys.exit(1)
 
 try:
@@ -35,19 +34,28 @@ def print_header(text: str):
     print("=" * 60)
 
 def get_input(prompt: str, default: str = None) -> str:
-    """Get user input with optional default."""
+    """Get user input with optional default. Silent if EOF."""
     if default:
         display = f"{prompt} [{default}]: "
     else:
         display = f"{prompt}: "
     
-    value = input(display).strip()
-    return value if value else default
+    try:
+        value = input(display).strip()
+        return value if value else default
+    except EOFError:
+        # Piped mode - use default silently
+        if default:
+            return default
+        raise RuntimeError(f"No input for: {prompt}")
 
 def get_secret(prompt: str) -> str:
     """Get secret input (hidden)."""
     import getpass
-    return getpass.getpass(prompt + ": ")
+    try:
+        return getpass.getpass(prompt + ": ")
+    except EOFError:
+        raise RuntimeError(f"Cannot read secret in non-interactive mode: {prompt}")
 
 def select_model(provider_key: str) -> str:
     """Let user select from available models."""
@@ -258,7 +266,6 @@ def main():
                 print("   This is normal - configure them in credentials.json")
             else:
                 print(f"⚠️  Setup test returned error (OK if credentials aren't active)")
-                print(f"   Details: {error_msg[:100]}")
     except subprocess.TimeoutExpired:
         print("⚠️  Test timed out (provider may be slow)")
     except Exception as e:

@@ -57,7 +57,13 @@ cd ClawServant
 
 ### 2. Configure Your LLM
 
-Create `~/.clawservant/credentials.json` with your provider:
+Create `credentials.json` in the ClawServant installation directory:
+
+```bash
+# Copy example and edit
+cp credentials.json.example credentials.json
+# Edit credentials.json with your API keys/config
+```
 
 **AWS Bedrock:**
 ```json
@@ -169,16 +175,37 @@ python3 clawservant.py --status
 
 ### 4. Monitor
 
-ClawServant saves all output to a local workspace:
+ClawServant saves all output to the current working directory (where you run the script from):
 ```
-~/.clawservant/
-├── workspace/
-│   ├── memory.jsonl      # All thoughts, learnings, results (append-only)
-│   ├── state.json        # Cycle count, task count, timestamps
-│   ├── brain/            # Custom knowledge files (your input)
-│   ├── tasks/            # Incoming tasks (.md files)
-│   └── results/          # Completed task outputs (.json files)
-└── credentials.json      # Your LLM provider config
+/path/to/clawservant/
+├── clawservant.py
+├── providers.py
+├── start.sh
+├── credentials.json      # Your LLM provider config (in cwd)
+├── memory.jsonl          # Persistent memory (in cwd)
+├── state.json            # Cycle/task tracking (in cwd)
+├── brain/                # Knowledge files (child of cwd)
+├── tasks/                # Incoming tasks (child of cwd)
+├── results/              # Completed outputs (child of cwd)
+├── personality/          # Agent personality (child of cwd)
+└── rules/                # Behavior rules (child of cwd)
+```
+
+**To use a different directory**, just change where you run the script from:
+```bash
+# Instance 1
+cd /path/to/researcher1
+python3 /path/to/clawservant/clawservant.py --continuous
+
+# Instance 2 (simultaneous, different work dir)
+cd /path/to/researcher2
+python3 /path/to/clawservant/clawservant.py --continuous
+```
+
+Or override with environment variable:
+```bash
+export CLAWSERVANT_WORK_DIR=/custom/path
+python3 clawservant.py --continuous
 ```
 
 ## Architecture

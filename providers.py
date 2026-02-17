@@ -39,13 +39,21 @@ class BedrockProvider(LLMProvider):
     
     def is_available(self) -> bool:
         """Check if AWS credentials are configured."""
-        if not (os.environ.get("AWS_ACCESS_KEY_ID") or os.path.exists(os.path.expanduser("~/.aws/credentials"))):
+        has_env_creds = os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY")
+        has_aws_file = os.path.exists(os.path.expanduser("~/.aws/credentials"))
+        
+        if not (has_env_creds or has_aws_file):
             return False
+        
         try:
             import boto3
+            # Try to create client to validate credentials
             self.client = boto3.client("bedrock-runtime", region_name=self.region)
+            # Test with a simple describe call
+            self.client.list_foundation_models()
             return True
-        except Exception:
+        except Exception as e:
+            # Credentials exist but are invalid or Bedrock not accessible
             return False
     
     async def call(self, system_prompt: str, user_prompt: str, max_tokens: int = 500) -> str:
@@ -255,7 +263,14 @@ class ProviderManager:
                     print(f"[warn] {provider_name} failed: {e}, trying next...")
                     continue
         
-        raise RuntimeError(f"No LLM providers available. Configure credentials at {self.credentials_file}")
+        raise RuntimeError(
+            f"No LLM providers available.\n"
+            f"Configure credentials at: {self.credentials_file}\n\n"
+            f"For AWS Bedrock: Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY\n"
+            f"                 Or configure ~/.aws/credentials\n\n"
+            f"For other providers: Edit credentials.json with API keys\n\n"
+            f"Then run: python3 setup.py"
+        )
     
     def status(self) -> Dict[str, Any]:
         """Get provider status."""

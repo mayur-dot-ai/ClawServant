@@ -178,47 +178,46 @@ def main():
             print("✅ Keeping existing configuration")
             return
     
-    # Select provider
-    print("\nSelect LLM provider(s):")
-    print("  1) AWS Bedrock (Claude, Llama, Mistral)")
-    print("  2) Anthropic (Direct Claude API)")
-    print("  3) OpenAI (GPT-4, GPT-4o)")
-    print("  4) OpenRouter (200+ models)")
-    print("  5) Ollama (Local LLM)")
-    print("  6) Multiple providers (with fallback)")
+    # Show available providers
+    print("\nAvailable LLM providers:")
+    provider_list = []
+    provider_map = {}
+    setup_funcs = {
+        "bedrock": setup_bedrock,
+        "anthropic": setup_anthropic,
+        "openai": setup_openai,
+        "openrouter": setup_openrouter,
+        "ollama": setup_ollama,
+    }
     
-    choice = get_input("Choice (1-6)", "1")
+    for i, (key, config) in enumerate(MODELS_DB.items(), 1):
+        if key in setup_funcs:
+            provider_list.append(key)
+            provider_map[str(i)] = (key, setup_funcs[key])
+            print(f"  {i}) {config['name']:30} - {config['description']}")
+    
+    print(f"  {len(provider_list)+1}) Multiple providers (with fallback)")
+    print(f"  0) Exit")
+    
+    choice = get_input(f"Choice (0-{len(provider_list)+1})", "1")
     
     providers = []
     fallback_order = []
     
-    if choice == "1":
-        providers.append(setup_bedrock())
-        fallback_order = ["bedrock"]
-    elif choice == "2":
-        providers.append(setup_anthropic())
-        fallback_order = ["anthropic"]
-    elif choice == "3":
-        providers.append(setup_openai())
-        fallback_order = ["openai"]
-    elif choice == "4":
-        providers.append(setup_openrouter())
-        fallback_order = ["openrouter"]
-    elif choice == "5":
-        providers.append(setup_ollama())
-        fallback_order = ["ollama"]
-    elif choice == "6":
+    if choice == "0":
+        print("Cancelled")
+        return
+    elif choice == str(len(provider_list) + 1):
+        # Multiple providers
         print("\n🔄 Multiple Providers (will try in order)")
-        provider_map = {
-            "1": ("bedrock", setup_bedrock),
-            "2": ("anthropic", setup_anthropic),
-            "3": ("openai", setup_openai),
-            "4": ("openrouter", setup_openrouter),
-            "5": ("ollama", setup_ollama),
-        }
-        
         while True:
-            sub_choice = get_input("\nAdd provider? (1=Bedrock, 2=Anthropic, 3=OpenAI, 4=OpenRouter, 5=Ollama, 0=Done)", "0")
+            print("\nAvailable providers:")
+            for i, (key, config) in enumerate(MODELS_DB.items(), 1):
+                if key in setup_funcs:
+                    print(f"  {i}) {config['name']}")
+            print("  0) Done")
+            
+            sub_choice = get_input("Add provider (0=Done)", "0")
             if sub_choice == "0":
                 break
             elif sub_choice in provider_map:
@@ -226,6 +225,11 @@ def main():
                 providers.append(setup_func())
                 if name not in fallback_order:
                     fallback_order.append(name)
+    elif choice in provider_map:
+        # Single provider
+        name, setup_func = provider_map[choice]
+        providers.append(setup_func())
+        fallback_order = [name]
     
     if not providers:
         print("❌ No providers selected")

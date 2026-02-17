@@ -38,14 +38,15 @@ logging.basicConfig(
 logger = logging.getLogger("clawservant")
 
 # Configuration
-WORK_DIR = Path.home() / ".clawservant" / "workspace"
+WORK_DIR = Path.home() / ".clawservant"
 MEMORY_FILE = WORK_DIR / "memory.jsonl"
 STATE_FILE = WORK_DIR / "state.json"
 TASKS_DIR = WORK_DIR / "tasks"
 RESULTS_DIR = WORK_DIR / "results"
+BRAIN_DIR = WORK_DIR / "brain"
 
 # Ensure directories exist
-for d in [WORK_DIR, TASKS_DIR, RESULTS_DIR]:
+for d in [WORK_DIR, TASKS_DIR, RESULTS_DIR, BRAIN_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 # Provider manager (global, initialized at startup)
@@ -124,11 +125,10 @@ class ClawServant:
     
     def _get_brain_mtime(self) -> float:
         """Get the latest modification time in brain folder."""
-        brain_dir = WORK_DIR / "brain"
-        if not brain_dir.exists():
+        if not BRAIN_DIR.exists():
             return 0
         
-        brain_files = list(brain_dir.glob("*.md")) + list(brain_dir.glob("*.txt"))
+        brain_files = list(BRAIN_DIR.glob("*.md")) + list(BRAIN_DIR.glob("*.txt"))
         if not brain_files:
             return 0
         
@@ -137,13 +137,12 @@ class ClawServant:
     
     def _load_brain(self) -> str:
         """Load all brain files from brain/ folder."""
-        brain_dir = WORK_DIR / "brain"
         brain_content = ""
         
-        if not brain_dir.exists():
+        if not BRAIN_DIR.exists():
             return brain_content
         
-        brain_files = list(brain_dir.glob("*.md")) + list(brain_dir.glob("*.txt"))
+        brain_files = list(BRAIN_DIR.glob("*.md")) + list(BRAIN_DIR.glob("*.txt"))
         if brain_files:
             logger.info(f"Loaded {len(brain_files)} brain files")
             for brain_file in sorted(brain_files):
@@ -303,6 +302,8 @@ Tasks completed: {self.state['tasks_completed']}
         print(f"Tasks Completed: {self.state['tasks_completed']}")
         print(f"Memories: {len(self.memory.memories)}")
         print(f"Work Dir: {WORK_DIR}")
+        print(f"  brain/: {list(BRAIN_DIR.glob('*')) if BRAIN_DIR.exists() else 'empty'}")
+        print(f"  tasks/: {list(TASKS_DIR.glob('*')) if TASKS_DIR.exists() else 'empty'}")
         print()
 
 

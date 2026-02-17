@@ -31,6 +31,6 @@ if [ ! -f "clawservant.py" ]; then
     git clone https://github.com/mayur-dot-ai/ClawServant.git . || exit 1
 fi
 
-# Setup - reopen stdin from terminal
+# Setup
 echo ""
-python3 setup.py < /dev/tty
+exec python3 setup.py

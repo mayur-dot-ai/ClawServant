@@ -12,23 +12,35 @@ echo "   All files (code, credentials, memory) stay in ONE folder."
 echo ""
 echo "Current folder: $(pwd)"
 echo ""
-read -p "👉 Is this the folder where you want ClawServant installed? (y/n): " response
 
-if [[ ! "$response" =~ ^[Yy]$ ]]; then
-    echo ""
-    echo "ℹ️  No problem! Here's what to do:"
-    echo ""
-    echo "1. Create a folder for ClawServant:"
-    echo "   mkdir -p ~/my-research-agent"
-    echo ""
-    echo "2. Navigate into it:"
-    echo "   cd ~/my-research-agent"
-    echo ""
-    echo "3. Run the installer again:"
-    echo "   curl -fsSL https://github.com/mayur-dot-ai/ClawServant/raw/main/install.sh | bash"
-    echo ""
-    exit 0
-fi
+# Interactive prompt (works better with piped input)
+while true; do
+    echo -n "👉 Is this the folder where you want ClawServant installed? (yes/no): "
+    read -r response
+    case "$response" in
+        [Yy][Ee][Ss]|[Yy])
+            break
+            ;;
+        [Nn][Oo]|[Nn])
+            echo ""
+            echo "ℹ️  No problem! Here's what to do:"
+            echo ""
+            echo "1. Create a folder for ClawServant:"
+            echo "   mkdir -p ~/my-research-agent"
+            echo ""
+            echo "2. Navigate into it:"
+            echo "   cd ~/my-research-agent"
+            echo ""
+            echo "3. Run the installer again:"
+            echo "   curl -fsSL https://github.com/mayur-dot-ai/ClawServant/raw/main/install.sh | bash"
+            echo ""
+            exit 0
+            ;;
+        *)
+            echo "Please answer yes or no"
+            ;;
+    esac
+done
 
 echo ""
 echo "✅ Great! Let's set up ClawServant here..."

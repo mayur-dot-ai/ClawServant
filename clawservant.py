@@ -38,8 +38,15 @@ logging.basicConfig(
 logger = logging.getLogger("clawservant")
 
 def get_work_dir() -> Path:
-    """Get work directory, supporting CLAWSERVANT_WORK_DIR override."""
-    return Path(os.getenv("CLAWSERVANT_WORK_DIR", str(Path.home() / ".clawservant")))
+    """Get work directory (defaults to current working directory).
+    
+    All work folders (brain/, tasks/, results/) are relative to cwd.
+    This ensures portability and allows multiple instances to run simultaneously.
+    
+    Supports CLAWSERVANT_WORK_DIR override for alternative locations.
+    """
+    # Default: current working directory (where the user ran the script from)
+    return Path(os.getenv("CLAWSERVANT_WORK_DIR", "."))
 
 def get_paths():
     """Get all paths dynamically to support runtime overrides."""

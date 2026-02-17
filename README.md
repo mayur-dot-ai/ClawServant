@@ -139,206 +139,47 @@ python3 clawservant.py --continuous
 
 Then **stop here** and check with your human operator. You need those capabilities.
 
-**Otherwise, continue:**
+### Installation Steps
 
-### Quick Start (Agents)
+1. **Check Python is available**
+   ```bash
+   python3 --version
+   ```
+   You need Python 3.9+. If not available, ask your human.
 
-```bash
-# 1. Ask your user where to install
-echo "Where should I install ClawServant? (default: ~/clawservant-agent)"
-read install_path
+2. **Create a folder and clone the repo**
+   ```bash
+   mkdir -p ~/clawservant-agent
+   cd ~/clawservant-agent
+   git clone https://github.com/mayur-dot-ai/ClawServant.git .
+   ```
 
-# 2. Create and clone
-mkdir -p "$install_path"
-cd "$install_path"
-git clone https://github.com/mayur-dot-ai/ClawServant.git .
+3. **Install dependencies**
+   ```bash
+   pip3 install boto3 anthropic openai httpx
+   ```
 
-# 3. Verify environment
-python3 -c "import boto3; print('✅ boto3 ready')" || pip3 install boto3 anthropic openai httpx
+4. **Create credentials.json with your LLM provider config**
+   
+   Edit `credentials.json` and add your provider credentials (access keys, API tokens, etc.)
 
-# 4. You now control everything:
-#    - credentials.json (edit directly with LLM API keys)
-#    - personality/personality.md (write your persona)
-#    - rules/rules.md (write your behavior rules)
-#    - brain/*.md (add domain knowledge)
+5. **Customize your personality and rules**
+   
+   Edit `personality/personality.md` to define how you think and behave.
+   Edit `rules/rules.md` to define your behavioral guidelines.
 
-# 5. Test yourself
-python3 clawservant.py --task "test task"
+6. **Test it works**
+   ```bash
+   python3 clawservant.py --task "test task"
+   cat results/task_*.json
+   ```
 
-# 6. Report results to user
-cat results/task_*.json
-```
+7. **Run continuously**
+   ```bash
+   python3 clawservant.py --continuous
+   ```
 
-### Step-by-Step (Agent Implementation)
-
-**Step 1: Environment Check**
-
-```python
-import subprocess
-import json
-from pathlib import Path
-
-# Check Python version
-subprocess.run(["python3", "--version"], check=True)
-
-# Check/install boto3
-try:
-    import boto3
-except ImportError:
-    subprocess.run(["pip3", "install", "boto3", "anthropic", "openai", "httpx"], check=True)
-```
-
-**Step 2: Clone Repository**
-
-```python
-install_dir = Path("~/clawservant-agent").expanduser()
-install_dir.mkdir(parents=True, exist_ok=True)
-
-subprocess.run([
-    "git", "clone", 
-    "https://github.com/mayur-dot-ai/ClawServant.git", "."
-], cwd=install_dir, check=True)
-```
-
-**Step 3: Create credentials.json**
-
-```python
-credentials = {
-    "providers": [
-        {
-            "name": "bedrock",
-            "enabled": True,
-            "config": {
-                "region": "us-east-1",
-                "model_id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
-                "access_key": "YOUR_AWS_ACCESS_KEY",
-                "secret_key": "YOUR_AWS_SECRET_KEY"
-            }
-        }
-    ],
-    "fallback_order": ["bedrock"]
-}
-
-with open(install_dir / "credentials.json", "w") as f:
-    json.dump(credentials, f, indent=2)
-```
-
-**Step 4: Customize Personality**
-
-```python
-personality = """# My Agent Personality
-
-## Who I Am
-- Role: AI Research Assistant
-- Expertise: Technical research, code analysis, documentation
-- Style: Direct, thorough, data-driven
-
-## How I Think
-- Always verify facts before claiming them
-- Show reasoning step-by-step
-- Ask clarifying questions when needed
-- Provide actionable recommendations
-"""
-
-with open(install_dir / "personality/personality.md", "w") as f:
-    f.write(personality)
-```
-
-**Step 5: Customize Rules**
-
-```python
-rules = """# Behavior Rules
-
-## Quality Standards
-- IF writing code THEN include error handling and comments
-- IF answering questions THEN cite sources or flag confidence level
-- IF uncertain THEN say so explicitly
-
-## Boundaries
-- IF asked for help THEN check if it's in my expertise
-- IF outside scope THEN suggest the right resource or person
-- IF risky THEN flag potential issues before proceeding
-
-## Communication
-- IF technical THEN explain at appropriate depth
-- IF unclear THEN ask for clarification
-- IF multiple options THEN list pros/cons
-"""
-
-with open(install_dir / "rules/rules.md", "w") as f:
-    f.write(rules)
-```
-
-**Step 6: Add Domain Knowledge**
-
-```python
-brain_file = """# Domain Knowledge: Research Tools
-
-## Key Resources
-- GitHub API for code queries
-- OpenClaw documentation at docs.openclaw.ai
-- AWS Bedrock for LLM inference
-
-## Known Limitations
-- Cannot access live APIs without credentials
-- File system access limited to work directory
-- Memory limited to memory.jsonl file
-"""
-
-with open(install_dir / "brain/knowledge.md", "w") as f:
-    f.write(brain_file)
-```
-
-**Step 7: Test Installation**
-
-```python
-import subprocess
-import json
-
-result = subprocess.run(
-    ["python3", "clawservant.py", "--task", "Test: What is your role?"],
-    cwd=install_dir,
-    capture_output=True,
-    text=True,
-    timeout=30
-)
-
-if result.returncode == 0:
-    print("✅ ClawServant is working!")
-    # Check results
-    results = sorted((install_dir / "results").glob("task_*.json"))
-    if results:
-        with open(results[-1]) as f:
-            task_result = json.load(f)
-            print(f"Task result: {task_result['result'][:200]}...")
-else:
-    print(f"❌ Error: {result.stderr}")
-```
-
-**Step 8: Report to User**
-
-```python
-print("""
-✅ ClawServant installed and tested!
-
-Location: {install_dir}
-Personality: Customized
-Rules: Configured
-Brain: Populated
-
-Running continuously...
-""".format(install_dir=install_dir))
-
-# Now run continuously
-subprocess.Popen(
-    ["python3", "clawservant.py", "--continuous"],
-    cwd=install_dir
-)
-```
-
-### Python Commands Reference
-
-For agents implementing ClawServant:
+### Commands Reference
 
 ```bash
 # Single task
@@ -359,50 +200,6 @@ echo "task content" > tasks/task_$(date +%s).md
 # Check results
 cat results/task_*.json | tail -1 | python3 -m json.tool
 ```
-
-### Key Differences: Humans vs Agents
-
-| Task | Humans | Agents |
-|------|--------|--------|
-| Installation | Run install.sh | Clone repo manually |
-| Setup | Run setup.py | Edit credentials.json directly |
-| Personality | Use template, fill in | Write custom persona |
-| Configuration | Interactive prompts | Programmatic JSON/file writes |
-| Testing | Manual CLI commands | Run and parse JSON results |
-| Monitoring | Watch logs | Parse memory.jsonl and results/ |
-
-### Integration with OpenClaw
-
-To run ClawServant as an OpenClaw agent:
-
-1. **In your OpenClaw session**, spawn a sub-agent for installation:
-```bash
-openclaw agent --message "Install ClawServant and test it"
-```
-
-2. **The agent will:**
-   - Create install folder
-   - Clone repo
-   - Edit credentials.json with Bedrock creds
-   - Customize personality/rules
-   - Run test task
-   - Report results back
-
-3. **Then supervise** the continuous instance from your main session.
-
-### Troubleshooting for Agents
-
-**"credentials.json not found"**
-- Verify it was created in the correct directory
-- Check file permissions
-
-**"No providers available"**
-- Verify AWS credentials in credentials.json are valid
-- Test boto3 connection manually
-
-**"Memory file growing too fast"**
-- Archive old memories: `mv memory.jsonl memory.archive.jsonl`
-- Or filter to recent: `tail -1000 memory.jsonl > memory.new && mv memory.new memory.jsonl`
 
 ---
 

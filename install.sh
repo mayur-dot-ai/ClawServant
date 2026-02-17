@@ -6,6 +6,33 @@ set -e
 
 echo "🤖 ClawServant Installer"
 echo "======================="
+echo ""
+echo "ℹ️  ClawServant is designed to be highly portable."
+echo "   All files (code, credentials, memory) stay in ONE folder."
+echo ""
+echo "Current folder: $(pwd)"
+echo ""
+read -p "👉 Is this the folder where you want ClawServant installed? (y/n): " response
+
+if [[ ! "$response" =~ ^[Yy]$ ]]; then
+    echo ""
+    echo "ℹ️  No problem! Here's what to do:"
+    echo ""
+    echo "1. Create a folder for ClawServant:"
+    echo "   mkdir -p ~/my-research-agent"
+    echo ""
+    echo "2. Navigate into it:"
+    echo "   cd ~/my-research-agent"
+    echo ""
+    echo "3. Run the installer again:"
+    echo "   curl -fsSL https://github.com/mayur-dot-ai/ClawServant/raw/main/install.sh | bash"
+    echo ""
+    exit 0
+fi
+
+echo ""
+echo "✅ Great! Let's set up ClawServant here..."
+echo ""
 
 # Check prerequisites
 if ! command -v git &> /dev/null; then
@@ -27,15 +54,14 @@ echo "✅ Python $python_version found"
 # Clone if needed
 if [ ! -f "clawservant.py" ]; then
     echo "📦 Cloning ClawServant from GitHub..."
-    if ! git clone https://github.com/mayur-dot-ai/ClawServant.git clawservant 2>&1; then
+    if ! git clone https://github.com/mayur-dot-ai/ClawServant.git . 2>&1; then
         echo "❌ Failed to clone repository"
         echo "   Check your internet connection and GitHub access"
         exit 1
     fi
-    cd clawservant
     echo "✅ Cloned successfully"
 else
-    echo "✅ clawservant.py found in current directory"
+    echo "✅ clawservant.py found"
 fi
 
 # Run setup wizard

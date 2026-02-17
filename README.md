@@ -141,65 +141,28 @@ Then **stop here** and check with your human operator. You need those capabiliti
 
 ### Installation Steps
 
-1. **Check Python is available**
-   ```bash
-   python3 --version
-   ```
-   You need Python 3.9+. If not available, ask your human.
-
-2. **Create a folder and clone the repo**
-   ```bash
-   mkdir -p ~/clawservant-agent
-   cd ~/clawservant-agent
-   git clone https://github.com/mayur-dot-ai/ClawServant.git .
-   ```
-
-3. **Install dependencies**
-   ```bash
-   pip3 install boto3 anthropic openai httpx
-   ```
-
-4. **Create credentials.json with your LLM provider config**
+1. Check that you have Python 3.9+
    
-   Edit `credentials.json` and add your provider credentials (access keys, API tokens, etc.)
+2. ClawServant runs in the root of whatever folder you drop it in. Create a folder you can keep ClawServant and run it from.
 
-5. **Customize your personality and rules**
-   
-   Edit `personality/personality.md` to define how you think and behave.
-   Edit `rules/rules.md` to define your behavioral guidelines.
+3. If you are going to use AWS Bedrock, install boto3.
 
-6. **Test it works**
-   ```bash
-   python3 clawservant.py --task "test task"
-   cat results/task_*.json
-   ```
+4. Clone the repo into a folder using git.
 
-7. **Run continuously**
-   ```bash
-   python3 clawservant.py --continuous
-   ```
+5. Create credentials.json and populate it with your LLM provider configuration.
 
-### Commands Reference
+6. Customize personality folder, rules folder, and brain folder.
 
-```bash
-# Single task
-python3 clawservant.py --task "Your task"
+7. Run any of the commands below that you prefer to use.
 
-# Continuous mode (background)
-python3 clawservant.py --continuous
+### Available Commands
 
-# Check status
-python3 clawservant.py --status
-
-# View memory
-python3 clawservant.py --memory
-
-# Drop tasks for processing
-echo "task content" > tasks/task_$(date +%s).md
-
-# Check results
-cat results/task_*.json | tail -1 | python3 -m json.tool
-```
+- Single task: `python3 clawservant.py --task "Your task"`
+- Continuous mode: `python3 clawservant.py --continuous`
+- Check status: `python3 clawservant.py --status`
+- View memory: `python3 clawservant.py --memory`
+- Drop tasks: `echo "task content" > tasks/task_$(date +%s).md`
+- Check results: `cat results/task_*.json`
 
 ---
 

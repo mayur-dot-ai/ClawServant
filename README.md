@@ -38,7 +38,7 @@ ClawServant builds on lessons learned from [HermitClaw](https://github.com/openc
 | **Memory footprint** | 80MB+ | 50MB |
 | **Task latency** | 30-60s | 8-15s |
 | **Startup time** | 3-5s | 2s |
-| **Lines of code** | 2000+ | 400 |
+| **Lines of code** | 2000+ | 500 |
 | **External frameworks** | FastAPI, React, Node | None (pure Python) |
 | **File-based task queue** | ❌ | ✅ |
 | **Persistent memory** | ❌ | ✅ (JSONL) |
@@ -51,18 +51,17 @@ ClawServant builds on lessons learned from [HermitClaw](https://github.com/openc
 ### 1. Install
 
 ```bash
-git clone https://github.com/you/ClawServant.git
+git clone https://github.com/mayur-dot-ai/ClawServant.git
 cd ClawServant
 ```
 
 ### 2. Configure Your LLM
 
-Create `credentials.json` in the ClawServant installation directory:
+Create `credentials.json` in your working directory:
 
 ```bash
-# Copy example and edit
 cp credentials.json.example credentials.json
-# Edit credentials.json with your API keys/config
+# Edit credentials.json with your provider config
 ```
 
 **AWS Bedrock:**
@@ -79,17 +78,6 @@ cp credentials.json.example credentials.json
     }
   ],
   "fallback_order": ["bedrock"]
-}
-```
-
-**Or customize the model ID:**
-```json
-{
-  "name": "bedrock",
-  "config": {
-    "region": "us-east-1",
-    "model_id": "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
-  }
 }
 ```
 
@@ -142,612 +130,63 @@ cp credentials.json.example credentials.json
 }
 ```
 
-**Multiple providers (fallback):**
-```json
-{
-  "providers": [
-    {"name": "bedrock", "enabled": true, "config": {...}},
-    {"name": "anthropic", "enabled": true, "config": {...}},
-    {"name": "openai", "enabled": true, "config": {...}}
-  ],
-  "fallback_order": ["bedrock", "anthropic", "openai", "ollama"]
-}
-```
-
-See [SETUP.md](./SETUP.md) for complete setup guide for all providers.
+See [SETUP.md](./SETUP.md) for complete setup guide.
 
 ### 3. Run
 
-**Option A: Continuous thinking (background)**
-```bash
-python3 clawservant.py --continuous --interval 5
-```
-
-**Option B: Single task**
+**Single task:**
 ```bash
 python3 clawservant.py --task "Your task here"
 ```
 
-**Option C: Check status**
+**Continuous thinking:**
+```bash
+python3 clawservant.py --continuous
+```
+
+**Check status:**
 ```bash
 python3 clawservant.py --status
 ```
 
 ### 4. Monitor
 
-ClawServant saves all output to the current working directory (where you run the script from):
+All output is saved to the current working directory:
 ```
-/path/to/clawservant/
-├── clawservant.py
-├── providers.py
-├── start.sh
-├── credentials.json      # Your LLM provider config (in cwd)
-├── memory.jsonl          # Persistent memory (in cwd)
-├── state.json            # Cycle/task tracking (in cwd)
-├── brain/                # Knowledge files (child of cwd)
-├── tasks/                # Incoming tasks (child of cwd)
-├── results/              # Completed outputs (child of cwd)
-├── personality/          # Agent personality (child of cwd)
-└── rules/                # Behavior rules (child of cwd)
+/path/to/work/
+├── credentials.json      # Your LLM provider config
+├── memory.jsonl          # All thoughts, learnings, results (append-only)
+├── state.json            # Cycle count, task count, timestamps
+├── tasks/                # Drop .md files here
+├── results/              # Completed task outputs (.json)
+├── brain/                # Knowledge files
+├── personality/          # Agent personality definition
+└── rules/                # Behavior rules
 ```
 
-**To use a different directory**, just change where you run the script from:
+## Portability
+
+ClawServant is designed to run from **any directory**:
+
 ```bash
-# Instance 1
-cd /path/to/researcher1
-python3 /path/to/clawservant/clawservant.py --continuous
+# Instance 1: Research agent
+cd /work/researcher1
+python3 /path/to/ClawServant/clawservant.py --continuous
 
-# Instance 2 (simultaneous, different work dir)
-cd /path/to/researcher2
-python3 /path/to/clawservant/clawservant.py --continuous
+# Instance 2: Developer agent  
+cd /work/researcher2
+python3 /path/to/ClawServant/clawservant.py --continuous
 ```
 
-Or override with environment variable:
+Each instance uses its own `credentials.json` and memory files. No global state, no conflicts.
+
+To use a different work directory:
 ```bash
 export CLAWSERVANT_WORK_DIR=/custom/path
 python3 clawservant.py --continuous
 ```
 
-## Architecture
-
-### Core Thinking Cycle
-
-1. **Initialize** — Load core personality, brain files, and memories
-2. **Check for tasks** — Scan `tasks/` folder
-3. **Process tasks** — If found, send to LLM with context
-4. **Record results** — Save output, update memory
-5. **Continuous thought** — Generate reflection (no task needed)
-6. **Persist** — Save state, append to memory
-7. **Wait** — Sleep for `--interval` seconds, repeat
-
-### Identity System (Three Layers)
-
-ClawServant has three separate identity layers:
-
-**1. Personality (`personality/personality.md`)**
-- WHO the agent is: name, role, communication style, values
-- Single file in `personality/` folder
-- Loaded once at startup
-- Example: "I'm a researcher who values accuracy and cites sources"
-
-**2. Rules (`rules/rules.md`)**
-- HOW the agent behaves: if/then guidelines, constraints, decision-making
-- Single file in `rules/` folder  
-- Primitive behavior rules: "if asked for code, then always include error handling"
-- Hardcoded filename: `rules.md`
-
-**3. Brain Files (`brain/` folder)**
-- WHAT the agent knows: domain knowledge, standards, methodology
-- Multiple files in `brain/` folder
-- Files are read in **alphabetical order**
-- Examples: `a.md`, `b.md`, `coding-standards.md`, `research-methodology.md`
-- Auto-reloads every cycle (no restart needed if you add/modify files)
-- Each file added to the system prompt automatically
-- Use numeric prefixes if order matters: `01-foundations.md`, `02-standards.md`
-
-### Example: Three-Layer Setup
-
-```
-~/.clawservant/
-├── personality/personality.md
-│   "I'm a code reviewer focused on maintainability and testing"
-├── rules/rules.md
-│   "IF code has no tests THEN request tests before approval"
-│   "IF PR > 500 lines THEN ask to split into smaller PRs"
-└── brain/
-    ├── python-standards.md
-    │   "Use type hints, follow PEP 8, pytest for tests"
-    └── company-values.md
-        "We prioritize readability over cleverness"
-```
-
-**All three get incorporated into the system prompt before each LLM call.**
-
-### Memory Model
-
-Each entry in `memory.jsonl` is a single-line JSON:
-
-```json
-{
-  "timestamp": "2026-02-17T09:50:16.090875",
-  "kind": "thought",
-  "content": "I should focus on the research task at hand",
-  "importance": 1
-}
-```
-
-**Kinds:**
-- `thought` — Internal reasoning (importance: 1, low)
-- `task` — Received task (importance: 3, high)
-- `result` — Task output (importance: 2, medium)
-- `observation` — General learnings (importance: 1, low)
-
-## Integration with OpenClaw
-
-### Pattern 1: File-Based Task Queue
-
-Drop a task into the `tasks/` folder, ClawServant picks it up:
-
-```bash
-# From your OpenClaw session:
-cat > ~/.clawservant/workspace/tasks/analyze-logs.md << 'EOF'
-# Analyze Application Logs
-
-Review the attached logs and identify:
-1. Error patterns
-2. Performance bottlenecks
-3. Security concerns
-4. Recommendations
-EOF
-```
-
-ClawServant processes it and saves results to `workspace/results/`.
-
-### Pattern 2: Sub-Agent Spawning
-
-Use OpenClaw's `sessions_spawn` to run ClawServant for specific projects:
-
-```bash
-# From main OpenClaw session:
-openclaw sessions_spawn \
-  --task "Deploy ClawServant for research project" \
-  --label "research-agent"
-```
-
-### Pattern 3: Programmatic Access
-
-Query ClawServant's memory from other scripts:
-
-```python
-import json
-from pathlib import Path
-
-memory_file = Path.home() / ".clawservant/workspace/memory.jsonl"
-
-# Load all memories
-memories = []
-with open(memory_file) as f:
-    for line in f:
-        if line.strip():
-            memories.append(json.loads(line))
-
-# Find recent results
-results = [m for m in memories if m["kind"] == "result"][-10:]
-for r in results:
-    print(f"[{r['timestamp']}] {r['content'][:100]}...")
-```
-
-## Performance
-
-| Metric | Value |
-|--------|-------|
-| Startup time | ~2 seconds |
-| Single task completion | ~8-15 seconds (depending on task complexity) |
-| Memory footprint | ~50MB |
-| Cost | Depends on LLM provider (Bedrock, Anthropic, OpenAI, or free with Ollama) |
-
-## Configuration
-
-### Workspace Structure
-
-```
-~/.clawservant/
-├── credentials.json          # LLM provider config (you create)
-├── personality/              
-│   └── personality.md        # WHO you are (template provided)
-├── rules/                    
-│   └── rules.md              # HOW you behave (template provided)
-├── brain/                    
-│   ├── a.md                  # Example file (delete after reading)
-│   ├── b.md                  # Example file (delete after reading)
-│   ├── example.md            # Usage guide
-│   └── [your-files].md       # Drop any .md/.txt files here
-├── tasks/                    # Task queue (you drop .md files)
-├── results/                  # Task outputs (auto-generated)
-├── memory.jsonl              # Persistent memories (auto-generated)
-└── state.json                # Agent state (auto-generated)
-```
-
-### Core Personality File
-
-Create `~/.clawservant/workspace/core.md` to define WHO the agent is:
-
-```markdown
-# [Your Agent Name]
-
-## Who I Am
-- Role: Researcher / Developer / Analyst
-- Expertise: [Your specializations]
-- Style: [Communication style]
-
-## How I Think
-- I approach problems by [methodology]
-- I value [principles]
-- My strengths: [skills]
-
-## What I Do
-- Primary tasks: [main work]
-- Tools I use: [capabilities]
-- Success looks like: [outcomes]
-```
-
-**This is your agent's personality.** It's included in every LLM call.
-
-See `core.md.example` for a complete template.
-
-### Custom Brain Files
-
-Create knowledge files in `~/.clawservant/workspace/brain/` to define WHAT the agent knows:
-
-```bash
-# Create a knowledge base
-echo "# Company Research Standards
-
-- Always cite sources
-- Verify with 3+ independent sources
-- Distinguish opinion from fact" > brain/research-standards.md
-
-# Add coding guidelines
-echo "# Code Quality Standards
-
-- Python: PEP 8 compliance
-- Functions: Clear docstrings
-- Error handling: All exceptions caught" > brain/coding-standards.md
-```
-
-**Any `.md` or `.txt` file in `brain/` is automatically loaded and included in the system prompt.**
-
-**Auto-reload:** If you add or modify brain files while ClawServant is running, they're automatically reloaded each cycle—no restart needed.
-
-### Credentials File
-
-Your LLM provider is configured separately from your personality/knowledge. This keeps them independent.
-
-Create `~/.clawservant/credentials.json`:
-
-```json
-{
-  "providers": [
-    {
-      "name": "bedrock",
-      "enabled": true,
-      "config": {
-        "region": "us-east-1",
-        "model_id": "us.anthropic.claude-haiku-4-5-20251001-v1:0"
-      }
-    }
-  ],
-  "fallback_order": ["bedrock"]
-}
-```
-
-You can customize:
-- `region` (for Bedrock)
-- `model_id` (Bedrock model, e.g., Opus, Sonnet, Haiku)
-- `api_key` (for Anthropic/OpenAI)
-- Multiple providers with fallback
-
-See [SETUP.md](./SETUP.md) for all provider options.
-
-## Use Cases
-
-### Research Agent
-Deploy ClawServant to continuously research market trends, competitor updates, or technical topics:
-
-```bash
-# Create recurring research tasks
-cat > ~/.clawservant/workspace/tasks/market-research.md << 'EOF'
-# Weekly Market Research
-
-Research and summarize this week's AI/ML developments:
-- New model releases
-- Pricing changes
-- Enterprise adoption patterns
-EOF
-
-python3 clawservant.py --continuous --interval 3600  # Run hourly
-```
-
-### Code Analysis Agent
-Use ClawServant to analyze codebases, suggest optimizations, or generate documentation:
-
-```bash
-python3 clawservant.py --task "Analyze /repo codebase and suggest performance improvements"
-```
-
-### Content Creation
-Have ClawServant draft blog posts, technical documentation, or summaries:
-
-```bash
-python3 clawservant.py --task "Draft a blog post on: The State of AI in Q1 2026"
-```
-
-### Decision Support
-Ask ClawServant to analyze options and provide structured recommendations:
-
-```bash
-python3 clawservant.py --task "Compare these three approaches [details] and recommend the best one"
-```
-
-## Development & Extension
-
-### Add Custom Tools
-
-Modify the `think()` method to include tool calls (web search, file I/O, API calls, etc.):
-
-```python
-async def think(self, prompt: str) -> str:
-    # Add tool support here
-    # Examples: web search, database queries, API calls
-    pass
-```
-
-### Create Specialist Variants
-
-Copy `clawservant.py` and change the core personality:
-
-```bash
-cp clawservant.py developer.py
-# Edit developer.py: change system prompt to Developer role
-python3 developer.py --task "Generate a Python function that..."
-```
-
-Build variants:
-- **Researcher** — Deep analysis, citations, synthesis
-- **Developer** — Code generation, debugging, optimization
-- **Security** — Risk analysis, threat modeling, compliance
-- **Architect** — System design, trade-off analysis
-
-### Add Custom LLM Providers
-
-Edit `providers.py` and extend the `LLMProvider` class:
-
-```python
-class YourProviderName(LLMProvider):
-    def __init__(self, config):
-        self.config = config
-        self.api_key = config.get("api_key") or os.environ.get("YOUR_API_KEY")
-    
-    def is_available(self) -> bool:
-        return bool(self.api_key)
-    
-    async def call(self, system_prompt: str, user_prompt: str, max_tokens: int = 500) -> str:
-        # Call your API
-        pass
-
-# Register in PROVIDERS dict
-PROVIDERS["yourprovider"] = YourProviderName
-```
-
-Then add to `credentials.json`:
-```json
-{
-  "providers": [
-    {
-      "name": "yourprovider",
-      "enabled": true,
-      "config": {"api_key": "..."}
-    }
-  ]
-}
-```
-
-## Common Questions
-
-**Q: Why no web UI?**  
-A: Web UIs add 80MB+ overhead and 30-60s task latency. For autonomous background work, a CLI + file-based interface is faster and simpler.
-
-**Q: Can I run multiple ClawServant instances?**  
-A: Yes! Each can have a different `WORK_DIR` and personality. Deploy as separate processes or systemd services.
-
-**Q: What happens if ClawServant crashes?**  
-A: Restart it. All memories are persisted to `memory.jsonl`, so it resumes with full context.
-
-**Q: Can I use ClawServant with my existing tooling?**  
-A: Yes. ClawServant outputs JSON and markdown, so it works with pipelines, webhooks, CI/CD systems, etc.
-
-**Q: What's the memory limit?**  
-A: Theoretically unlimited (JSONL is append-only), but practical limit is ~500 memories per day (~3MB). Context window includes the last 10 memories.
-
-**Q: How do I customize ClawServant's behavior?**  
-A: Create a `core.md` file in `workspace/` and add brain files to `workspace/brain/`. See "Configuration" section above.
-
-## Troubleshooting
-
-### "No LLM providers available"
-
-**Problem:** No credentials configured.
-
-**Solution:**
-1. Create `~/.clawservant/credentials.json`
-2. Check provider setup (see [SETUP.md](./SETUP.md))
-3. Verify environment variables or API keys
-
-### Task Not Processing
-
-1. Check if task file is in `~/.clawservant/workspace/tasks/`
-2. Verify ClawServant is running (`ps aux | grep clawservant`)
-3. Check `~/.clawservant/workspace/memory.jsonl` for errors
-4. Ensure LLM provider is configured and available
-
-### Memory Grows Too Large
-
-```bash
-# Archive old memories
-cp ~/.clawservant/workspace/memory.jsonl ~/.clawservant/workspace/memory.archive.jsonl
-
-# Keep only recent
-tail -100 ~/.clawservant/workspace/memory.archive.jsonl > ~/.clawservant/workspace/memory.jsonl
-```
-
-## License
-
-MIT — Use, modify, and distribute freely.
-
-## Contributing
-
-Found a bug? Want to add features? Open an issue or PR on GitHub.
-
----
-
-**Inspired by:** [HermitClaw](https://github.com/openclaw/hermitclaw) — a delightful thinking agent we learned from  
-**For:** OpenClaw installations and autonomous AI workflows  
-**Status:** Production ready  
-**Updated:** 2026-02-17
-
-
-## Quick Start
-
-### 1. Install
-
-```bash
-git clone https://github.com/mayur-dot-ai/ClawServant.git
-cd ClawServant
-```
-
-### 2. Configure AWS Credentials
-
-ClawServant uses AWS Bedrock. Ensure your AWS credentials are configured:
-
-```bash
-# Either set environment variables:
-export AWS_ACCESS_KEY_ID="..."
-export AWS_SECRET_ACCESS_KEY="..."
-export AWS_REGION="us-east-1"
-
-# Or configure via AWS CLI:
-aws configure
-```
-
-### 3. Run
-
-**Option A: Continuous thinking (background)**
-```bash
-python3 clawservant.py --continuous --interval 5
-```
-
-**Option B: Single task**
-```bash
-python3 clawservant.py --task "Analyze the current state of AI pricing in 2026"
-```
-
-**Option C: Check status**
-```bash
-python3 clawservant.py --status
-python3 clawservant.py --memory  # View recent thoughts and learnings
-```
-
-### 4. Monitor
-
-ClawServant saves all output to a local workspace:
-```
-workspace/
-├── memory.jsonl      # All thoughts, learnings, results (append-only)
-├── state.json        # Cycle count, task count, timestamps
-├── tasks/            # Incoming tasks (.md files)
-└── results/          # Completed task outputs (.json files)
-```
-
-## Integration with OpenClaw
-
-### Pattern 1: File-Based Task Queue
-
-Drop a task into the `tasks/` folder, ClawServant picks it up:
-
-```bash
-# From your OpenClaw session:
-cat > ~/.openclaw/workspace/clawservant/workspace/tasks/analyze-logs.md << 'EOF'
-# Analyze Application Logs
-
-Review the attached logs and identify:
-1. Error patterns
-2. Performance bottlenecks
-3. Security concerns
-4. Recommendations
-
-[logs would be included]
-EOF
-```
-
-ClawServant processes it and saves results to `workspace/results/`.
-
-### Pattern 2: Sub-Agent Spawning
-
-Use OpenClaw's `sessions_spawn` to run ClawServant for specific projects:
-
-```bash
-# From main OpenClaw session:
-openclaw sessions_spawn \
-  --task "Deploy ClawServant for Q2 market research project" \
-  --label "market-research-agent"
-```
-
-### Pattern 3: Programmatic Access
-
-Query ClawServant's memory from other scripts:
-
-```python
-import json
-from pathlib import Path
-
-memory_file = Path.home() / ".openclaw/workspace/clawservant/workspace/memory.jsonl"
-
-# Load all memories
-memories = []
-with open(memory_file) as f:
-    for line in f:
-        if line.strip():
-            memories.append(json.loads(line))
-
-# Find recent research results
-results = [m for m in memories if m["kind"] == "result"][-10:]
-for r in results:
-    print(f"[{r['timestamp']}] {r['content'][:100]}...")
-```
-
 ## How It Works
-
-### Architecture
-
-```
-┌──────────────────┐
-│   Task Input     │  Markdown files, API calls, stdin
-└────────┬─────────┘
-         │
-    ┌────▼────────────────┐
-    │ ClawServant Agent   │  5-second thinking cycle
-    │  - Reads tasks      │  - Processes one at a time
-    │  - Calls Bedrock    │  - Records results
-    │  - Saves memories   │  - Tracks state
-    └────┬────────────────┘
-         │
-    ┌────▼──────────────────┐
-    │  Persistent Storage   │
-    │  - memory.jsonl       │  All thoughts (append-only)
-    │  - state.json         │  Cycle tracking
-    │  - results/           │  Task outputs
-    └───────────────────────┘
-```
 
 ### The Thinking Cycle
 
@@ -759,6 +198,25 @@ for r in results:
 6. **Persist** — Save state, append to memory
 7. **Wait** — Sleep for `--interval` seconds, repeat
 
+### Identity System (Three Layers)
+
+**1. Personality (`personality/personality.md`)**
+- WHO the agent is
+- Communication style, values, preferences
+- Loaded once at startup
+
+**2. Rules (`rules/rules.md`)**
+- HOW the agent behaves
+- If/then guidelines, constraints
+- Decision-making framework
+
+**3. Brain (`brain/` folder)**
+- WHAT the agent knows
+- Domain knowledge, standards, best practices
+- Auto-reloads if files change (no restart needed)
+
+All three are auto-incorporated into the system prompt before each LLM call.
+
 ### Memory Model
 
 Each entry in `memory.jsonl` is a single-line JSON:
@@ -767,174 +225,116 @@ Each entry in `memory.jsonl` is a single-line JSON:
 {
   "timestamp": "2026-02-17T09:50:16.090875",
   "kind": "thought",
-  "content": "I should focus on research methodology improvements",
+  "content": "I should focus on improving my research methodology",
   "importance": 1
 }
 ```
 
 **Kinds:**
-- `thought` — Internal reasoning (importance: 1, low)
-- `task` — Received task (importance: 3, high)
-- `result` — Task output (importance: 2, medium)
-- `observation` — General learnings (importance: 1, low)
+- `thought` — Internal reasoning
+- `task` — Received task
+- `result` — Task output
+- `observation` — General learnings
+
+Memory is **append-only** and persistent across restarts.
+
+## Use Cases
+
+### Research Agent
+```bash
+mkdir -p /work/researcher
+cd /work/researcher
+cp /path/to/ClawServant/credentials.json.example credentials.json
+# Edit credentials.json
+echo "Research Q1 2026 AI trends" > tasks/research.md
+python3 /path/to/ClawServant/clawservant.py --continuous
+```
+
+### Multiple Specialists
+```bash
+# Code reviewer
+cd /work/code-reviewer && python3 /path/to/ClawServant/clawservant.py --continuous
+
+# Security analyzer  
+cd /work/security && python3 /path/to/ClawServant/clawservant.py --continuous
+
+# Content writer
+cd /work/writer && python3 /path/to/ClawServant/clawservant.py --continuous
+```
+
+## Configuration
+
+Edit `credentials.json` to change:
+- LLM provider
+- Model ID
+- Region (for Bedrock)
+- Fallback order
+
+Edit `personality/personality.md` to define agent identity.
+Edit `rules/rules.md` to define behavior guidelines.
+Add knowledge files to `brain/` folder.
 
 ## Performance
 
 | Metric | Value |
 |--------|-------|
 | Startup time | ~2 seconds |
-| Single task completion | ~8-15 seconds (depending on task complexity) |
+| Single task completion | ~8-15 seconds |
 | Memory footprint | ~50MB |
-| Cost (Bedrock Haiku 4.5) | ~$0.20-0.30/hour continuous |
-| Monthly (24/7) | ~$50-70 |
-
-## Configuration
-
-Edit `clawservant.py` to customize:
-
-```python
-MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"  # LLM model
-WORK_DIR = Path.home() / ".openclaw/workspace/clawservant/workspace"  # Workspace location
-```
-
-## Use Cases
-
-### Research Agent
-Deploy ClawServant to continuously research market trends, competitor updates, or technical topics:
-
-```bash
-# Create recurring research tasks
-echo "# Weekly Market Research" > workspace/tasks/market.md
-python3 clawservant.py --continuous --interval 3600  # Run hourly
-```
-
-### Code Analysis Agent
-Use ClawServant to analyze codebases, suggest optimizations, or generate documentation:
-
-```bash
-python3 clawservant.py --task "Analyze the codebase in /repo and suggest performance improvements"
-```
-
-### Content Creation
-Have ClawServant draft blog posts, technical documentation, or summaries:
-
-```bash
-python3 clawservant.py --task "Draft a blog post on: The State of AI in Q1 2026"
-```
-
-### Decision Support
-Ask ClawServant to analyze options and provide structured recommendations:
-
-```bash
-python3 clawservant.py --task "Compare these three approaches [details] and recommend the best one"
-```
-
-## Development & Extension
-
-### Add Custom Tools
-
-Modify the `think()` method to include tool calls:
-
-```python
-async def think(self, prompt: str) -> str:
-    """Add tool support here."""
-    # Example: web search, file I/O, API calls
-    # Tools can be called within the LLM response handling
-    pass
-```
-
-### Create Specialist Variants
-
-Copy `clawservant.py` and change the system prompt:
-
-```bash
-cp clawservant.py developer.py
-# Edit developer.py: change system prompt to Developer role
-python3 developer.py --task "Generate a Python function that..."
-```
-
-Build variants:
-- **Researcher** — Deep analysis, citations, synthesis
-- **Developer** — Code generation, debugging, optimization
-- **Security** — Risk analysis, threat modeling, compliance
-- **Architect** — System design, trade-off analysis
-
-### Store in Org
-
-All variants can live in the same repo with different roles:
-
-```
-ClawServant/
-├── clawservant.py     # Base Researcher
-├── developer.py       # Developer variant
-├── security.py        # Security variant
-└── architect.py       # Architect variant
-```
-
-## Comparison with Alternatives
-
-| Feature | ClawServant | Hermit (HermitClaw) | ChatGPT | Local LLama |
-|---------|-------------|-------------------|---------|-----------|
-| CLI-first | ✅ | ❌ (web UI) | ❌ (web UI) | ✅ |
-| Persistent memory | ✅ | ✅ | ❌ | ⚠️ |
-| AWS integration | ✅ (Bedrock) | ✅ (Bedrock) | N/A | ❌ |
-| Offline | ❌ (needs AWS) | ❌ (needs AWS) | ❌ | ✅ |
-| Cost | $50-70/mo | $50-70/mo | $20/mo | Free |
-| OpenClaw native | ✅ | ⚠️ | ❌ | ❌ |
-| Production ready | ✅ | ⚠️ | ✅ | ⚠️ |
-
-## Common Questions
-
-**Q: Why Bedrock and not OpenAI?**  
-A: Bedrock is cheaper (25-50% savings), IAM-integrated, and runs in AWS regions. For mayur.ai's infrastructure, it's the natural choice.
-
-**Q: Can I run multiple ClawServant instances?**  
-A: Yes! Each can have a different `WORK_DIR` and role. Deploy as separate processes or systemd services.
-
-**Q: What happens if ClawServant crashes?**  
-A: Restart it. All memories are persisted to `memory.jsonl`, so it resumes with full context.
-
-**Q: Can I integrate ClawServant with my existing tooling?**  
-A: Yes. ClawServant outputs JSON and markdown, so it works with pipelines, webhooks, CI/CD systems, etc.
-
-**Q: What's the memory limit?**  
-A: Theoretically unlimited (JSONL is append-only), but practical limit is ~500 memories per day (~3MB). Context window includes the last 10 memories.
+| Cost (Bedrock Haiku 4.5) | ~$0.20-0.30/hour (24/7) |
 
 ## Troubleshooting
 
-### AWS Credentials Not Found
-```bash
-export AWS_ACCESS_KEY_ID="..."
-export AWS_SECRET_ACCESS_KEY="..."
-export AWS_REGION="us-east-1"
-python3 clawservant.py --status
-```
+### "No LLM providers available"
+Ensure `credentials.json` exists in your work directory with valid provider config.
 
-### Task Not Processing
-1. Check if task file is in `workspace/tasks/`
-2. Verify ClawServant is running (`ps aux | grep clawservant`)
-3. Check `workspace/memory.jsonl` for errors
-4. Ensure AWS credentials are valid
+### Task not processing
+1. Verify task file is in `tasks/` directory
+2. Check file extension is `.md`
+3. Run `python3 clawservant.py --status` to debug
 
-### Memory Grows Too Large
+### Memory grows too large
 ```bash
 # Archive old memories
-cp workspace/memory.jsonl workspace/memory.archive.jsonl
+cp memory.jsonl memory.archive.jsonl
 # Keep only recent
-tail -100 workspace/memory.archive.jsonl > workspace/memory.jsonl
+tail -500 memory.archive.jsonl > memory.jsonl
 ```
+
+## Provider Details
+
+- **Bedrock** — AWS managed Claude (25-50% cheaper than direct API)
+- **Anthropic** — Direct Claude API (more control, slightly more expensive)
+- **OpenAI** — Direct GPT-4/GPT-4o API
+- **Ollama** — Local LLM (free, offline, but slower)
+
+See [PROVIDERS.md](./PROVIDERS.md) for detailed API reference.
+
+## Development
+
+### Create a Specialist Variant
+
+```bash
+cp clawservant.py developer.py
+# Edit: change name and system prompt
+python3 developer.py --task "Generate a Python function..."
+```
+
+### Add Custom Tools
+
+Modify the `think()` method to include tool calls (web search, file I/O, APIs, etc.).
+
+### Contribute
+
+Found a bug? Want a feature? Open an issue or PR on GitHub.
 
 ## License
 
 MIT — Use, modify, and distribute freely.
 
-## Contributing
-
-Found a bug? Want to add features? Open an issue or PR on GitHub.
-
 ---
 
 **Built by:** mayur.ai  
-**Powered by:** AWS Bedrock + Claude Haiku 4.5  
+**Powered by:** AWS Bedrock + Claude  
 **Status:** Production ready (Feb 2026)  
 **For:** OpenClaw installations and autonomous AI workflows

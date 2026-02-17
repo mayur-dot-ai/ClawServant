@@ -1,13 +1,19 @@
 #!/bin/bash
 # Start ClawServant continuous thinking loop
 
-cd ~/.openclaw/workspace/claw
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Run from the script directory (wherever it's installed)
+cd "$SCRIPT_DIR"
 
 # Run in background with nohup
-nohup python3 clawservant.py --continuous --interval 5 > claw-continuous.log 2>&1 &
+nohup python3 clawservant.py --continuous --interval 5 > clawservant-continuous.log 2>&1 &
 
-echo "✅ ClawServant started (PID: $!)"
-echo "   Logs: ~/.openclaw/workspace/claw/claw-continuous.log"
-echo "   Memory: ~/.openclaw/workspace/claw/workspace/memory.jsonl"
-echo "   Status: python3 clawservant.py --status"
-echo "   View memory: python3 clawservant.py --memory"
+PID=$!
+
+echo "✅ ClawServant started (PID: $PID)"
+echo "   Logs: $SCRIPT_DIR/clawservant-continuous.log"
+echo "   Memory: ~/.clawservant/workspace/memory.jsonl"
+echo "   Status: cd $SCRIPT_DIR && python3 clawservant.py --status"
+echo "   View memory: cd $SCRIPT_DIR && python3 clawservant.py --memory"

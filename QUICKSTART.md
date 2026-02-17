@@ -39,7 +39,12 @@ export OPENAI_API_KEY="sk-..."
 
 ## 3. Create Credentials File
 
-Create `~/.clawservant/credentials.json`:
+Create `credentials.json` in your working directory (wherever you'll run the script from):
+
+```bash
+cp credentials.json.example credentials.json
+# Edit credentials.json with your API keys
+```
 
 ```json
 {
@@ -69,14 +74,15 @@ python3 clawservant.py --status
 python3 clawservant.py --task "Summarize the history of AI from 2020-2026"
 
 # Check results
-cat ~/.clawservant/results/task_*.json | head -100
+ls results/
+cat results/task_*.json | head -100
 ```
 
 ## 5. Add a Task
 
 ```bash
 # Create a task
-cat > ~/.clawservant/tasks/research.md << EOF
+cat > tasks/research.md << EOF
 # Research Task
 
 Identify and summarize the top 5 developments in AI/ML this week.
@@ -89,15 +95,15 @@ EOF
 python3 clawservant.py --continuous
 
 # ClawServant picks up the task automatically and processes it
-# Results saved to ~/.clawservant/results/
+# Results saved to results/
 ```
 
 ## 6. Customize Your Agent (Optional)
 
 **Add personality (WHO you are):**
 ```bash
-mkdir -p ~/.clawservant/personality
-cat > ~/.clawservant/personality/personality.md << 'EOF'
+mkdir -p personality
+cat > personality/personality.md << 'EOF'
 # My Research Agent
 
 ## Who I Am
@@ -114,8 +120,8 @@ EOF
 
 **Add rules (HOW you behave):**
 ```bash
-mkdir -p ~/.clawservant/rules
-cat > ~/.clawservant/rules/rules.md << 'EOF'
+mkdir -p rules
+cat > rules/rules.md << 'EOF'
 # Research Rules
 
 When researching topics:
@@ -131,7 +137,7 @@ EOF
 
 **Add domain knowledge (WHAT you know):**
 ```bash
-cat > ~/.clawservant/brain/research-standards.md << 'EOF'
+cat > brain/research-standards.md << 'EOF'
 # Research Standards
 
 - Seek multiple independent sources

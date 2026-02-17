@@ -178,29 +178,46 @@ ClawServant saves all output to a local workspace:
 6. **Persist** — Save state, append to memory
 7. **Wait** — Sleep for `--interval` seconds, repeat
 
-### Identity System (Two Parts)
+### Identity System (Three Layers)
 
-ClawServant has two separate identity layers:
+ClawServant has three separate identity layers:
 
-**1. Core Personality (`core.md`)**
-- WHO the agent is: name, role, expertise, communication style, values
-- Single file at `~/.clawservant/workspace/core.md`
+**1. Personality (`personality/personality.md`)**
+- WHO the agent is: name, role, communication style, values
+- Single file in `personality/` folder
 - Loaded once at startup
-- Defines the agent's personality and principles
 - Example: "I'm a researcher who values accuracy and cites sources"
 
-**2. Brain Files (`brain/` folder)**
-- WHAT the agent knows: domain knowledge, guidelines, standards
-- Multiple files in `~/.clawservant/workspace/brain/`
-- Examples: `research-methodology.md`, `coding-standards.md`, `company-values.md`
+**2. Rules (`rules/rules.md`)**
+- HOW the agent behaves: if/then guidelines, constraints, decision-making
+- Single file in `rules/` folder  
+- Primitive behavior rules: "if asked for code, then always include error handling"
+- Hardcoded filename: `rules.md`
+
+**3. Brain Files (`brain/` folder)**
+- WHAT the agent knows: domain knowledge, standards, methodology
+- Multiple files in `brain/` folder
+- Examples: `research-standards.md`, `coding-standards.md`, `company-values.md`
 - Auto-reloads every cycle (no restart needed if you add/modify files)
 - Each file added to the system prompt automatically
 
-**Key Difference:**
-- **core.md** = personality (who you are)
-- **brain/** = knowledge (what you know)
+### Example: Three-Layer Setup
 
-Both are incorporated into the system prompt before each LLM call.
+```
+~/.clawservant/
+├── personality/personality.md
+│   "I'm a code reviewer focused on maintainability and testing"
+├── rules/rules.md
+│   "IF code has no tests THEN request tests before approval"
+│   "IF PR > 500 lines THEN ask to split into smaller PRs"
+└── brain/
+    ├── python-standards.md
+    │   "Use type hints, follow PEP 8, pytest for tests"
+    └── company-values.md
+        "We prioritize readability over cleverness"
+```
+
+**All three get incorporated into the system prompt before each LLM call.**
 
 ### Memory Model
 
@@ -292,11 +309,14 @@ for r in results:
 ```
 ~/.clawservant/
 ├── credentials.json          # LLM provider config (you create)
-├── core.md                   # Personality file (WHO you are) - optional
-├── brain/                    # Knowledge files (WHAT you know) - optional
+├── personality/              # Agent identity (WHO you are)
+│   └── personality.md        # Personality template (optional)
+├── brain/                    # Knowledge base (WHAT you know)
 │   ├── domain-knowledge.md
 │   ├── coding-standards.md
 │   └── research-methodology.md
+├── rules/                    # Behavior guidelines (HOW you behave)
+│   └── rules.md              # If/then rules (optional)
 ├── tasks/                    # Task queue (you drop .md files)
 ├── results/                  # Task outputs (auto-generated)
 ├── memory.jsonl              # Persistent memories (auto-generated)

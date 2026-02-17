@@ -46,7 +46,9 @@ ClawServant builds on lessons learned from [HermitClaw](https://github.com/openc
 | **Web UI** | ✅ | ❌ (CLI-first) |
 | **Best for** | Interactive use | Autonomous background work |
 
-## Quick Start
+---
+
+## Installation Guide - For Humans
 
 ### Option 1: Automated Installer (Recommended)
 
@@ -113,7 +115,7 @@ cp credentials.json.example credentials.json
 mkdir -p tasks results brain personality rules
 ```
 
-## First Run
+### First Run
 
 ```bash
 # Check status
@@ -125,419 +127,19 @@ python3 clawservant.py --task "What is 2+2?"
 # Start continuous thinking
 python3 clawservant.py --continuous
 ```
-```
-/path/to/work/
-├── credentials.json      # Your LLM provider config
-├── memory.jsonl          # All thoughts, learnings, results (append-only)
-├── state.json            # Cycle count, task count, timestamps
-├── tasks/                # Drop .md files here
-├── results/              # Completed task outputs (.json)
-├── brain/                # Knowledge files
-├── personality/          # Agent personality definition
-└── rules/                # Behavior rules
-```
-
-## Portability
-
-ClawServant is designed to run from **any directory**. Each installation is self-contained.
-
-**To run ClawServant:**
-
-1. Navigate to the folder where you installed it:
-```bash
-cd /path/to/your/clawservant
-```
-
-2. Run the Python script:
-```bash
-python3 clawservant.py --continuous
-```
-
-**Running multiple instances:**
-
-Each instance gets its own folder with separate credentials and memory:
-
-```bash
-# Instance 1: Research agent
-cd /work/researcher1
-python3 clawservant.py --continuous
-
-# Instance 2: Developer agent  
-cd /work/researcher2
-python3 clawservant.py --continuous
-```
-
-Each folder has its own:
-- `credentials.json` (API keys/config)
-- `memory.jsonl` (persistent memory)
-- `tasks/`, `results/`, `brain/`, etc.
-
-No global state, no conflicts. They run completely independently.
-
-**Optional: Custom work directory**
-
-If you want credentials and memory in a different location:
-```bash
-export CLAWSERVANT_WORK_DIR=/custom/path
-python3 clawservant.py --continuous
-```
-
-## How It Works
-
-### The Thinking Cycle
-
-1. **Initialize** — Load memories, restore state
-2. **Check for tasks** — Scan `tasks/` folder
-3. **Process tasks** — If found, send to LLM with context
-4. **Record results** — Save output, update memory
-5. **Continuous thought** — Generate reflection (no task needed)
-6. **Persist** — Save state, append to memory
-7. **Wait** — Sleep for `--interval` seconds, repeat
-
-### Identity System (Three Layers)
-
-**1. Personality (`personality/personality.md`)**
-- WHO the agent is
-- Communication style, values, preferences
-- Loaded once at startup
-
-**2. Rules (`rules/rules.md`)**
-- HOW the agent behaves
-- If/then guidelines, constraints
-- Decision-making framework
-
-**3. Brain (`brain/` folder)**
-- WHAT the agent knows
-- Domain knowledge, standards, best practices
-- Auto-reloads if files change (no restart needed)
-
-All three are auto-incorporated into the system prompt before each LLM call.
-
-### Memory Model
-
-Each entry in `memory.jsonl` is a single-line JSON:
-
-```json
-{
-  "timestamp": "2026-02-17T09:50:16.090875",
-  "kind": "thought",
-  "content": "I should focus on improving my research methodology",
-  "importance": 1
-}
-```
-
-**Kinds:**
-- `thought` — Internal reasoning
-- `task` — Received task
-- `result` — Task output
-- `observation` — General learnings
-
-Memory is **append-only** and persistent across restarts.
-
-## Use Cases
-
-### Research Agent
-```bash
-mkdir -p /work/researcher
-cd /work/researcher
-cp /path/to/ClawServant/credentials.json.example credentials.json
-# Edit credentials.json
-echo "Research Q1 2026 AI trends" > tasks/research.md
-python3 /path/to/ClawServant/clawservant.py --continuous
-```
-
-### Multiple Specialists
-```bash
-# Code reviewer
-cd /work/code-reviewer && python3 /path/to/ClawServant/clawservant.py --continuous
-
-# Security analyzer  
-cd /work/security && python3 /path/to/ClawServant/clawservant.py --continuous
-
-# Content writer
-cd /work/writer && python3 /path/to/ClawServant/clawservant.py --continuous
-```
-
-## Configuration
-
-Edit `credentials.json` to change:
-- LLM provider
-- Model ID
-- Region (for Bedrock)
-- Fallback order
-
-Edit `personality/personality.md` to define agent identity.
-Edit `rules/rules.md` to define behavior guidelines.
-Add knowledge files to `brain/` folder.
-
-## Updates
-
-ClawServant is a git repository, so updating is simple:
-
-```bash
-# Navigate to your installation
-cd /path/to/your/clawservant
-
-# Update the code
-bash update.sh
-```
-
-This safely pulls the latest code without touching:
-- `credentials.json` (your API keys)
-- `memory.jsonl` (your memories)
-- `tasks/`, `results/`, `brain/`, etc. (your data)
-
-To manually update:
-```bash
-git pull origin main
-```
-
-Your local files are unaffected since they're in `.gitignore`.
-
-## Performance
-
-| Metric | Value |
-|--------|-------|
-| Startup time | ~2 seconds |
-| Single task completion | ~8-15 seconds |
-| Memory footprint | ~50MB |
-| Cost (Bedrock Haiku 4.5) | ~$0.20-0.30/hour (24/7) |
-
-## Troubleshooting
-
-### "No LLM providers available"
-Ensure `credentials.json` exists in your work directory with valid provider config.
-
-### Task not processing
-1. Verify task file is in `tasks/` directory
-2. Check file extension is `.md`
-3. Run `python3 clawservant.py --status` to debug
-
-### Memory grows too large
-```bash
-# Archive old memories
-cp memory.jsonl memory.archive.jsonl
-# Keep only recent
-tail -500 memory.archive.jsonl > memory.jsonl
-```
-
-## Provider Details
-
-- **Bedrock** — AWS managed Claude (25-50% cheaper than direct API)
-- **Anthropic** — Direct Claude API (more control, slightly more expensive)
-- **OpenAI** — Direct GPT-4/GPT-4o API
-- **Ollama** — Local LLM (free, offline, but slower)
-
-See [PROVIDERS.md](./PROVIDERS.md) for detailed API reference.
-
-## Development
-
-### Create a Specialist Variant
-
-```bash
-cp clawservant.py developer.py
-# Edit: change name and system prompt
-python3 developer.py --task "Generate a Python function..."
-```
-
-### Add Custom Tools
-
-Modify the `think()` method to include tool calls (web search, file I/O, APIs, etc.).
-
-### Contribute
-
-Found a bug? Want a feature? Open an issue or PR on GitHub.
-
-## License
-
-MIT — Use, modify, and distribute freely.
 
 ---
 
-**Built by:** mayur.ai  
-**Powered by:** AWS Bedrock + Claude  
-**Status:** Production ready (Feb 2026)  
-**For:** OpenClaw installations and autonomous AI workflows
+## Installation Guide - For OpenClaw (and Other Bots)
 
----
+**⚠️ Prerequisites:** If you cannot:
+- Clone from GitHub
+- Modify files after download
+- Run Python scripts from CLI
 
-## FAQ
+Then **stop here** and check with your human operator. You need those capabilities.
 
-### Q: Can I use multiple providers with fallback?
-
-**A:** Yes! In `setup.py`, choose "Multiple providers (with fallback)" option. ClawServant will try each in order until one works.
-
-Edit `credentials.json` to set priority:
-```json
-{
-  "providers": [
-    { "name": "bedrock", ... },
-    { "name": "anthropic", ... }
-  ],
-  "fallback_order": ["bedrock", "anthropic"]
-}
-```
-
-### Q: How portable is this really?
-
-**A:** Completely! Everything lives in one folder:
-- `credentials.json` — Your API keys
-- `memory.jsonl` — Your memories
-- `tasks/`, `results/`, etc. — Your data
-
-Copy the folder anywhere, run `python3 clawservant.py`, it just works. No global state, no ~/.clawservant folder, no environment variables needed.
-
-### Q: Can I run multiple instances simultaneously?
-
-**A:** Yes! Each folder is independent. Create separate directories:
-```bash
-mkdir researcher1 researcher2
-cd researcher1
-git clone https://github.com/mayur-dot-ai/ClawServant.git .
-python3 setup.py
-# Each has its own credentials, memory, and state
-```
-
-### Q: What's the cost?
-
-**A:** Depends on model and usage:
-
-| Model | Cost | Ideal For |
-|-------|------|-----------|
-| Bedrock Haiku 4.5 | ~$0.20-0.30/hr (24/7) | Budget, continuous work |
-| Bedrock Sonnet | ~$0.80/hr (24/7) | Balanced reasoning |
-| OpenAI GPT-4o | ~$1.50/hr (24/7) | Premium reasoning |
-| Ollama Local | Free | Offline, no API cost |
-
-### Q: Can I customize the system prompt?
-
-**A:** Yes! Edit `personality/personality.md` and `rules/rules.md`:
-- `personality.md` — How the agent thinks and behaves
-- `rules/rules.md` — Guidelines and constraints
-
-Changes take effect on next task.
-
-### Q: Where does memory persist?
-
-**A:** Two places:
-- `memory.jsonl` — Long-term memory (survives restarts)
-- `brain/` — Brain files (persistent knowledge base)
-
-Memory is searchable and human-readable (JSONL format).
-
-### Q: How do I stop a running task?
-
-**A:** Just delete the task file:
-```bash
-rm tasks/task_*.md
-```
-
-ClawServant checks for task file before starting each cycle.
-
-### Q: Can I integrate with OpenClaw's webhook system?
-
-**A:** Not yet, but planned! For now, use file-based task queue.
-
-### Q: Is ClawServant secure?
-
-**A:** Credentials are stored locally in `credentials.json`. Best practices:
-- Never commit `credentials.json` to git (it's in `.gitignore`)
-- Don't share your ClawServant folder (it has your API keys)
-- Rotate credentials periodically
-- Use dedicated API keys with minimal permissions when possible
-
----
-
-## Extended Troubleshooting
-
-### "ModuleNotFoundError: No module named 'boto3'"
-
-**Problem:** You're using AWS Bedrock but boto3 isn't installed.
-
-**Solution:**
-```bash
-pip3 install boto3
-```
-
-All required packages:
-```bash
-pip3 install boto3 anthropic openai httpx
-```
-
-### "Credentials showing but provider says unavailable"
-
-**Problem:** credentials.json has credentials but provider won't connect.
-
-**For AWS Bedrock:**
-- Verify AWS Access Key ID is correct
-- Verify AWS Secret Access Key is complete (not truncated)
-- Check region is supported (usually `us-east-1`)
-- Ensure your AWS account has Bedrock API access enabled
-- Try: `python3 -c "import boto3; boto3.client('bedrock-runtime', region_name='us-east-1')"`
-
-**For Anthropic/OpenAI:**
-- Verify API key is correct (copy fresh from provider's dashboard)
-- Check API key hasn't been revoked or rate-limited
-- Try the API key in another tool first to verify it works
-
-### "Task stuck in tasks/ folder"
-
-**Problem:** Task file isn't being processed.
-
-**Solution:** Make sure filename follows pattern: `task_*.md` or `task_*.txt`
-
-**Debug:**
-```bash
-ls -la tasks/
-python3 clawservant.py --status
-# Check if task is actually being found
-```
-
-### "Memory file too large"
-
-**Problem:** `memory.jsonl` growing too fast.
-
-**Solution:**
-```bash
-# Archive old memories
-mv memory.jsonl memory.archive.jsonl
-touch memory.jsonl
-
-# Keep only recent
-tail -500 memory.archive.jsonl > memory.jsonl
-```
-
-### "Invalid credentials.json"
-
-**Problem:** JSON parsing error.
-
-**Solution:** Validate your JSON:
-```bash
-python3 -m json.tool credentials.json
-```
-
-If it fails, check for:
-- Trailing commas (not allowed in JSON)
-- Missing quotes around keys
-- Unescaped special characters in values
-
-### "DeprecationWarning about datetime"
-
-**Problem:** You see warnings about `datetime.utcnow()` (older versions only).
-
-**Solution:** Update to latest version:
-```bash
-git pull origin main
-```
-
-
----
-
-## For OpenClaw Agents (and Variants)
-
-**If you're an LLM agent running inside OpenClaw, follow this path instead of the human setup.**
-
-You have access to credentials, can write files, and can run Python directly. Use that!
+**Otherwise, continue:**
 
 ### Quick Start (Agents)
 
@@ -552,7 +154,7 @@ cd "$install_path"
 git clone https://github.com/mayur-dot-ai/ClawServant.git .
 
 # 3. Verify environment
-python3 -c "import boto3; print('✅ boto3 ready')" || pip3 install boto3
+python3 -c "import boto3; print('✅ boto3 ready')" || pip3 install boto3 anthropic openai httpx
 
 # 4. You now control everything:
 #    - credentials.json (edit directly with LLM API keys)
@@ -801,3 +403,284 @@ openclaw agent --message "Install ClawServant and test it"
 **"Memory file growing too fast"**
 - Archive old memories: `mv memory.jsonl memory.archive.jsonl`
 - Or filter to recent: `tail -1000 memory.jsonl > memory.new && mv memory.new memory.jsonl`
+
+---
+
+## Portability
+
+ClawServant is designed to run from **any directory**. Each installation is self-contained.
+
+**To run ClawServant:**
+
+1. Navigate to the folder where you installed it:
+```bash
+cd /path/to/your/clawservant
+```
+
+2. Run a task or start continuous mode:
+```bash
+python3 clawservant.py --task "your task"
+```
+
+All files (credentials, memory, state) stay in that folder. No global configuration, no ~/.clawservant directory, no environment variables needed.
+
+**Example: Multiple instances**
+```bash
+mkdir researcher1 researcher2
+cd researcher1
+git clone https://github.com/mayur-dot-ai/ClawServant.git .
+python3 setup.py  # Configure instance 1
+
+cd ../researcher2
+git clone https://github.com/mayur-dot-ai/ClawServant.git .
+python3 setup.py  # Configure instance 2
+
+# Both run independently with separate credentials and memory
+```
+
+## File Structure
+
+```
+/path/to/work/
+├── credentials.json      # Your LLM provider config
+├── memory.jsonl          # All thoughts, learnings, results (append-only)
+├── state.json            # Cycle count, task count, timestamps
+├── tasks/                # Drop .md files here
+├── results/              # Completed task outputs (.json)
+├── brain/                # Knowledge files
+├── personality/          # Agent personality definition
+└── rules/                # Behavior rules
+```
+
+## Performance
+
+| Metric | Value |
+|--------|-------|
+| Startup time | ~2 seconds |
+| Single task completion | ~8-15 seconds |
+| Memory footprint | ~50MB |
+| Cost (Bedrock Haiku 4.5) | ~$0.20-0.30/hour (24/7) |
+
+## Provider Details
+
+- **Bedrock** — AWS managed Claude (25-50% cheaper than direct API)
+- **Anthropic** — Direct Claude API (more control, slightly more expensive)
+- **OpenAI** — Direct GPT-4/GPT-4o API
+- **Ollama** — Local LLM (free, offline, but slower)
+
+See [PROVIDERS.md](./PROVIDERS.md) for detailed API reference.
+
+## Update
+
+Keep your installation up-to-date:
+
+```bash
+# Automatic (safe - preserves your data)
+bash update.sh
+```
+
+This safely pulls the latest code without touching:
+- `credentials.json` (your API keys)
+- `memory.jsonl` (your memories)
+- `tasks/`, `results/`, `brain/`, etc. (your data)
+
+To manually update:
+```bash
+git pull origin main
+```
+
+Your local files are unaffected since they're in `.gitignore`.
+
+## Development
+
+### Create a Specialist Variant
+
+```bash
+cp clawservant.py developer.py
+# Edit: change name and system prompt
+```
+
+### Extend with Custom Tools
+
+Edit `clawservant.py` to add new capabilities:
+- Custom research tools
+- API integrations
+- Database access
+- File processing
+
+---
+
+## FAQ
+
+### Q: Can I use multiple providers with fallback?
+
+**A:** Yes! In `setup.py`, choose "Multiple providers (with fallback)" option. ClawServant will try each in order until one works.
+
+Edit `credentials.json` to set priority:
+```json
+{
+  "providers": [
+    { "name": "bedrock", ... },
+    { "name": "anthropic", ... }
+  ],
+  "fallback_order": ["bedrock", "anthropic"]
+}
+```
+
+### Q: How portable is this really?
+
+**A:** Completely! Everything lives in one folder:
+- `credentials.json` — Your API keys
+- `memory.jsonl` — Your memories
+- `tasks/`, `results/`, etc. — Your data
+
+Copy the folder anywhere, run `python3 clawservant.py`, it just works. No global state, no ~/.clawservant folder, no environment variables needed.
+
+### Q: Can I run multiple instances simultaneously?
+
+**A:** Yes! Each folder is independent. Create separate directories:
+```bash
+mkdir researcher1 researcher2
+cd researcher1
+git clone https://github.com/mayur-dot-ai/ClawServant.git .
+python3 setup.py
+# Each has its own credentials, memory, and state
+```
+
+### Q: What's the cost?
+
+**A:** Depends on model and usage:
+
+| Model | Cost | Ideal For |
+|-------|------|-----------|
+| Bedrock Haiku 4.5 | ~$0.20-0.30/hr (24/7) | Budget, continuous work |
+| Bedrock Sonnet | ~$0.80/hr (24/7) | Balanced reasoning |
+| OpenAI GPT-4o | ~$1.50/hr (24/7) | Premium reasoning |
+| Ollama Local | Free | Offline, no API cost |
+
+### Q: Can I customize the system prompt?
+
+**A:** Yes! Edit `personality/personality.md` and `rules/rules.md`:
+- `personality.md` — How the agent thinks and behaves
+- `rules/rules.md` — Guidelines and constraints
+
+Changes take effect on next task.
+
+### Q: Where does memory persist?
+
+**A:** Two places:
+- `memory.jsonl` — Long-term memory (survives restarts)
+- `brain/` — Brain files (persistent knowledge base)
+
+Memory is searchable and human-readable (JSONL format).
+
+### Q: How do I stop a running task?
+
+**A:** Just delete the task file:
+```bash
+rm tasks/task_*.md
+```
+
+ClawServant checks for task file before starting each cycle.
+
+### Q: Can I integrate with OpenClaw's webhook system?
+
+**A:** Not yet, but planned! For now, use file-based task queue.
+
+### Q: Is ClawServant secure?
+
+**A:** Credentials are stored locally in `credentials.json`. Best practices:
+- Never commit `credentials.json` to git (it's in `.gitignore`)
+- Don't share your ClawServant folder (it has your API keys)
+- Rotate credentials periodically
+- Use dedicated API keys with minimal permissions when possible
+
+---
+
+## Troubleshooting
+
+### "ModuleNotFoundError: No module named 'boto3'"
+
+**Problem:** You're using AWS Bedrock but boto3 isn't installed.
+
+**Solution:**
+```bash
+pip3 install boto3
+```
+
+All required packages:
+```bash
+pip3 install boto3 anthropic openai httpx
+```
+
+### "Credentials showing but provider says unavailable"
+
+**Problem:** credentials.json has credentials but provider won't connect.
+
+**For AWS Bedrock:**
+- Verify AWS Access Key ID is correct
+- Verify AWS Secret Access Key is complete (not truncated)
+- Check region is supported (usually `us-east-1`)
+- Ensure your AWS account has Bedrock API access enabled
+- Try: `python3 -c "import boto3; boto3.client('bedrock-runtime', region_name='us-east-1')"`
+
+**For Anthropic/OpenAI:**
+- Verify API key is correct (copy fresh from provider's dashboard)
+- Check API key hasn't been revoked or rate-limited
+- Try the API key in another tool first to verify it works
+
+### "Task stuck in tasks/ folder"
+
+**Problem:** Task file isn't being processed.
+
+**Solution:** Make sure filename follows pattern: `task_*.md` or `task_*.txt`
+
+**Debug:**
+```bash
+ls -la tasks/
+python3 clawservant.py --status
+# Check if task is actually being found
+```
+
+### "Memory file too large"
+
+**Problem:** `memory.jsonl` growing too fast.
+
+**Solution:**
+```bash
+# Archive old memories
+mv memory.jsonl memory.archive.jsonl
+touch memory.jsonl
+
+# Keep only recent
+tail -500 memory.archive.jsonl > memory.jsonl
+```
+
+### "Invalid credentials.json"
+
+**Problem:** JSON parsing error.
+
+**Solution:** Validate your JSON:
+```bash
+python3 -m json.tool credentials.json
+```
+
+If it fails, check for:
+- Trailing commas (not allowed in JSON)
+- Missing quotes around keys
+- Unescaped special characters in values
+
+### "DeprecationWarning about datetime"
+
+**Problem:** You see warnings about `datetime.utcnow()` (older versions only).
+
+**Solution:** Update to latest version:
+```bash
+git pull origin main
+```
+
+---
+
+## License
+
+MIT License - See LICENSE file for details

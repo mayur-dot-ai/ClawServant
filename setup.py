@@ -41,13 +41,27 @@ def get_input(prompt: str, default: str = None) -> str:
     else:
         display = f"{prompt}: "
     
-    value = input(display).strip()
-    return value if value else default
+    try:
+        value = input(display).strip()
+        return value if value else default
+    except EOFError:
+        # When piped (no interactive input), use default
+        if default:
+            print(default)
+            return default
+        else:
+            print("")
+            raise RuntimeError(f"No input available for: {prompt}")
 
 def get_secret(prompt: str) -> str:
     """Get secret input (hidden)."""
     import getpass
-    return getpass.getpass(prompt + ": ")
+    try:
+        return getpass.getpass(prompt + ": ")
+    except EOFError:
+        # When piped, no secret input available
+        print("")
+        raise RuntimeError(f"Cannot read secret in non-interactive mode: {prompt}")
 
 def select_model(provider_key: str) -> str:
     """Let user select from available models."""

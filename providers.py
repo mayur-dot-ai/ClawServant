@@ -203,7 +203,10 @@ class ProviderManager:
     """Manages provider selection and fallback."""
     
     def __init__(self, credentials_file: Optional[Path] = None):
-        self.credentials_file = credentials_file or Path.home() / ".clawservant" / "credentials.json"
+        # Default: credentials.json in current working directory
+        if credentials_file is None:
+            credentials_file = Path.cwd() / "credentials.json"
+        self.credentials_file = credentials_file
         self.config = self._load_config()
         self.providers = self._init_providers()
         self.active_provider = None

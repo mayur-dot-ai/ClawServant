@@ -262,7 +262,7 @@ python3 clawservant.py --task "Test task"
 # If multiple configured, ClawServant tries fallback order
 
 # Check logs for which provider was used
-tail ~/.clawservant/workspace/memory.jsonl | grep -i "bedrock\|anthropic\|openai"
+tail memory.jsonl | grep -i "bedrock\|anthropic\|openai"
 ```
 
 ---

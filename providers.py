@@ -39,12 +39,15 @@ class BedrockProvider(LLMProvider):
     
     def is_available(self) -> bool:
         """Check if AWS credentials are configured in credentials.json."""
+        import sys
         # ONLY use credentials from config file (fully portable)
         if not (self.access_key and self.secret_key):
+            print(f"DEBUG BedrockProvider: Missing credentials - access_key={bool(self.access_key)}, secret_key={bool(self.secret_key)}", file=sys.stderr)
             return False
         
         try:
             import boto3
+            print(f"DEBUG BedrockProvider: Creating client with region={self.region}", file=sys.stderr)
             self.client = boto3.client(
                 "bedrock-runtime",
                 region_name=self.region,
@@ -53,8 +56,10 @@ class BedrockProvider(LLMProvider):
             )
             # Test with a simple API call
             self.client.list_foundation_models()
+            print(f"DEBUG BedrockProvider: Successfully created and tested client", file=sys.stderr)
             return True
-        except Exception:
+        except Exception as e:
+            print(f"DEBUG BedrockProvider: Error - {type(e).__name__}: {str(e)}", file=sys.stderr)
             return False
     
     async def call(self, system_prompt: str, user_prompt: str, max_tokens: int = 500) -> str:

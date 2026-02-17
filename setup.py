@@ -9,13 +9,20 @@ import os
 import sys
 import subprocess
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List
+
+# Load models database
+SCRIPT_DIR = Path(__file__).parent
+MODELS_FILE = SCRIPT_DIR / "models.json"
+
+with open(MODELS_FILE) as f:
+    MODELS_DB = json.load(f)
 
 def print_header(text: str):
     """Print section header."""
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 60)
     print(f"  {text}")
-    print("=" * 50)
+    print("=" * 60)
 
 def get_input(prompt: str, default: str = None) -> str:
     """Get user input with optional default."""
@@ -32,32 +39,36 @@ def get_secret(prompt: str) -> str:
     import getpass
     return getpass.getpass(prompt + ": ")
 
+def select_model(provider_key: str) -> str:
+    """Let user select from available models."""
+    models = MODELS_DB[provider_key]["models"]
+    
+    print(f"\n🤖 Available {MODELS_DB[provider_key]['name']} models:")
+    for i, model in enumerate(models, 1):
+        cost = f"({model['costTier']})" if model.get('costTier') else ""
+        print(f"  {i:2}) {model['name']:30} {cost:15} - {model['description']}")
+    print(f"  {len(models)+1}) Custom (enter ID manually)")
+    
+    while True:
+        choice = get_input("Model choice", "1")
+        try:
+            idx = int(choice) - 1
+            if 0 <= idx < len(models):
+                return models[idx]["id"]
+            elif idx == len(models):
+                return get_input("Model ID")
+            else:
+                print("Invalid choice")
+        except ValueError:
+            print("Please enter a number")
+
 def setup_bedrock() -> Dict[str, Any]:
     """Configure AWS Bedrock."""
-    print("\n🔧 AWS Bedrock Configuration")
+    print(f"\n🔧 {MODELS_DB['bedrock']['name']} Configuration")
+    print(f"   {MODELS_DB['bedrock']['description']}")
     
     region = get_input("AWS Region", "us-east-1")
-    
-    # List common models
-    print("\nCommon Bedrock Claude models:")
-    models = {
-        "1": "us.anthropic.claude-opus-4-1-20250805-v1:0 (Opus - most capable)",
-        "2": "us.anthropic.claude-3-5-sonnet-20241022-v1:0 (Sonnet - balanced)",
-        "3": "us.anthropic.claude-haiku-4-5-20251001-v1:0 (Haiku - fast & cheap)",
-        "4": "us.anthropic.claude-3-haiku-20240307-v1:0 (Haiku 3.5)",
-        "5": "us.anthropic.llama-3-1-405b-v1:0 (Llama 3.1 405B)",
-        "6": "Custom (enter your own)",
-    }
-    
-    for key, value in models.items():
-        print(f"  {key}) {value}")
-    
-    choice = get_input("Model choice", "3")
-    
-    if choice == "6":
-        model_id = get_input("Model ID (with region prefix)")
-    else:
-        model_id = models.get(choice, models["3"]).split(" ")[0]
+    model_id = select_model("bedrock")
     
     return {
         "name": "bedrock",
@@ -70,27 +81,11 @@ def setup_bedrock() -> Dict[str, Any]:
 
 def setup_anthropic() -> Dict[str, Any]:
     """Configure Anthropic API."""
-    print("\n🔧 Anthropic API Configuration")
+    print(f"\n🔧 {MODELS_DB['anthropic']['name']} Configuration")
+    print(f"   {MODELS_DB['anthropic']['description']}")
     
     api_key = get_secret("API Key (sk-ant-...)")
-    
-    print("\nCommon Anthropic Claude models:")
-    models = {
-        "1": "claude-opus-4-1-20250805 (Opus - most capable)",
-        "2": "claude-3-5-sonnet-20241022 (Sonnet - balanced)",
-        "3": "claude-3-5-haiku-20241022 (Haiku - fast & cheap)",
-        "4": "Custom (enter your own)",
-    }
-    
-    for key, value in models.items():
-        print(f"  {key}) {value}")
-    
-    choice = get_input("Model choice", "2")
-    
-    if choice == "4":
-        model = get_input("Model ID")
-    else:
-        model = models.get(choice, models["2"]).split(" ")[0]
+    model = select_model("anthropic")
     
     return {
         "name": "anthropic",
@@ -103,27 +98,11 @@ def setup_anthropic() -> Dict[str, Any]:
 
 def setup_openai() -> Dict[str, Any]:
     """Configure OpenAI API."""
-    print("\n🔧 OpenAI Configuration")
+    print(f"\n🔧 {MODELS_DB['openai']['name']} Configuration")
+    print(f"   {MODELS_DB['openai']['description']}")
     
     api_key = get_secret("API Key (sk-...)")
-    
-    print("\nCommon OpenAI models:")
-    models = {
-        "1": "gpt-4o (Latest, most capable)",
-        "2": "gpt-4o-mini (Fast & affordable)",
-        "3": "gpt-4-turbo (Legacy)",
-        "4": "Custom (enter your own)",
-    }
-    
-    for key, value in models.items():
-        print(f"  {key}) {value}")
-    
-    choice = get_input("Model choice", "2")
-    
-    if choice == "4":
-        model = get_input("Model ID")
-    else:
-        model = models.get(choice, models["2"]).split(" ")[0]
+    model = select_model("openai")
     
     return {
         "name": "openai",
@@ -134,12 +113,30 @@ def setup_openai() -> Dict[str, Any]:
         }
     }
 
+def setup_openrouter() -> Dict[str, Any]:
+    """Configure OpenRouter."""
+    print(f"\n🔧 {MODELS_DB['openrouter']['name']} Configuration")
+    print(f"   {MODELS_DB['openrouter']['description']}")
+    
+    api_key = get_secret("API Key (sk-or-...)")
+    model = select_model("openrouter")
+    
+    return {
+        "name": "openrouter",
+        "enabled": True,
+        "config": {
+            "api_key": api_key,
+            "model": model
+        }
+    }
+
 def setup_ollama() -> Dict[str, Any]:
     """Configure Ollama."""
-    print("\n🔧 Ollama Configuration")
+    print(f"\n🔧 {MODELS_DB['ollama']['name']} Configuration")
+    print(f"   {MODELS_DB['ollama']['description']}")
     
     base_url = get_input("Base URL", "http://localhost:11434")
-    model = get_input("Model name (llama2, mistral, etc.)", "llama2")
+    model = select_model("ollama")
     
     return {
         "name": "ollama",
@@ -166,10 +163,11 @@ def main():
     print("  1) AWS Bedrock (Claude, Llama, Mistral)")
     print("  2) Anthropic (Direct Claude API)")
     print("  3) OpenAI (GPT-4, GPT-4o)")
-    print("  4) Ollama (Local LLM)")
-    print("  5) Multiple providers (with fallback)")
+    print("  4) OpenRouter (200+ models)")
+    print("  5) Ollama (Local LLM)")
+    print("  6) Multiple providers (with fallback)")
     
-    choice = get_input("Choice (1-5)", "1")
+    choice = get_input("Choice (1-6)", "1")
     
     providers = []
     fallback_order = []
@@ -184,30 +182,30 @@ def main():
         providers.append(setup_openai())
         fallback_order = ["openai"]
     elif choice == "4":
+        providers.append(setup_openrouter())
+        fallback_order = ["openrouter"]
+    elif choice == "5":
         providers.append(setup_ollama())
         fallback_order = ["ollama"]
-    elif choice == "5":
+    elif choice == "6":
         print("\n🔄 Multiple Providers (will try in order)")
+        provider_map = {
+            "1": ("bedrock", setup_bedrock),
+            "2": ("anthropic", setup_anthropic),
+            "3": ("openai", setup_openai),
+            "4": ("openrouter", setup_openrouter),
+            "5": ("ollama", setup_ollama),
+        }
+        
         while True:
-            sub_choice = get_input("\nAdd provider? (1=Bedrock, 2=Anthropic, 3=OpenAI, 4=Ollama, 0=Done)", "0")
+            sub_choice = get_input("\nAdd provider? (1=Bedrock, 2=Anthropic, 3=OpenAI, 4=OpenRouter, 5=Ollama, 0=Done)", "0")
             if sub_choice == "0":
                 break
-            elif sub_choice == "1":
-                providers.append(setup_bedrock())
-                if "bedrock" not in fallback_order:
-                    fallback_order.append("bedrock")
-            elif sub_choice == "2":
-                providers.append(setup_anthropic())
-                if "anthropic" not in fallback_order:
-                    fallback_order.append("anthropic")
-            elif sub_choice == "3":
-                providers.append(setup_openai())
-                if "openai" not in fallback_order:
-                    fallback_order.append("openai")
-            elif sub_choice == "4":
-                providers.append(setup_ollama())
-                if "ollama" not in fallback_order:
-                    fallback_order.append("ollama")
+            elif sub_choice in provider_map:
+                name, setup_func = provider_map[sub_choice]
+                providers.append(setup_func())
+                if name not in fallback_order:
+                    fallback_order.append(name)
     
     if not providers:
         print("❌ No providers selected")

@@ -236,10 +236,17 @@ class ProviderManager:
         providers = {}
         provider_configs = {p["name"]: p["config"] for p in self.config.get("providers", [])}
         
+        import sys
+        print(f"DEBUG: Found {len(provider_configs)} provider configs", file=sys.stderr)
+        for name in provider_configs:
+            print(f"DEBUG: Provider config: {name}", file=sys.stderr)
+        
         for name, provider_class in PROVIDERS.items():
             config = provider_configs.get(name, {})
             provider = provider_class(config)
-            if provider.is_available():
+            available = provider.is_available()
+            print(f"DEBUG: {name} available={available}, config={bool(config)}", file=sys.stderr)
+            if available:
                 providers[name] = provider
         
         return providers

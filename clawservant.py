@@ -23,7 +23,7 @@ import time
 import argparse
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
@@ -100,7 +100,7 @@ class Memory:
     def add(self, kind: str, content: str, importance: int = 1):
         """Add a memory (thought, observation, learning, etc)."""
         memory = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "kind": kind,
             "content": content,
             "importance": importance,
@@ -138,7 +138,7 @@ class ClawServant:
                 return json.load(f)
         return {
             "name": self.name,
-            "started": datetime.utcnow().isoformat(),
+            "started": datetime.now(timezone.utc).isoformat(),
             "cycles": 0,
             "tasks_completed": 0,
         }
@@ -205,7 +205,7 @@ class ClawServant:
     def _save_state(self):
         """Save state to file."""
         self.state["cycles"] += 1
-        self.state["last_cycle"] = datetime.utcnow().isoformat()
+        self.state["last_cycle"] = datetime.now(timezone.utc).isoformat()
         with open(STATE_FILE, "w") as f:
             json.dump(self.state, f, indent=2)
     
@@ -239,7 +239,7 @@ class ClawServant:
         # Add context
         system_prompt += f"""## Current Context
 
-Time: {datetime.utcnow().isoformat()}
+Time: {datetime.now(timezone.utc).isoformat()}
 Cycle: {self.state['cycles']}
 Tasks completed: {self.state['tasks_completed']}
 
@@ -274,7 +274,7 @@ Tasks completed: {self.state['tasks_completed']}
         
         # Record result
         result = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "task": task_text,
             "result": result_text,
         }

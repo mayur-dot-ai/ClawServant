@@ -38,35 +38,20 @@ class BedrockProvider(LLMProvider):
         self.client = None
     
     def is_available(self) -> bool:
-        """Check if AWS credentials are configured."""
-        # If credentials provided in config, use those
-        if self.access_key and self.secret_key:
-            try:
-                import boto3
-                self.client = boto3.client(
-                    "bedrock-runtime",
-                    region_name=self.region,
-                    aws_access_key_id=self.access_key,
-                    aws_secret_access_key=self.secret_key,
-                )
-                # Test with a simple API call
-                self.client.list_foundation_models()
-                return True
-            except Exception:
-                return False
-        
-        # Otherwise check environment variables
-        has_env_creds = os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY")
-        has_aws_file = os.path.exists(os.path.expanduser("~/.aws/credentials"))
-        
-        if not (has_env_creds or has_aws_file):
+        """Check if AWS credentials are configured in credentials.json."""
+        # ONLY use credentials from config file (fully portable)
+        if not (self.access_key and self.secret_key):
             return False
         
         try:
             import boto3
-            # Try to create client to validate credentials
-            self.client = boto3.client("bedrock-runtime", region_name=self.region)
-            # Test with a simple describe call
+            self.client = boto3.client(
+                "bedrock-runtime",
+                region_name=self.region,
+                aws_access_key_id=self.access_key,
+                aws_secret_access_key=self.secret_key,
+            )
+            # Test with a simple API call
             self.client.list_foundation_models()
             return True
         except Exception:
@@ -281,11 +266,9 @@ class ProviderManager:
         
         raise RuntimeError(
             f"No LLM providers available.\n"
-            f"Configure credentials at: {self.credentials_file}\n\n"
-            f"For AWS Bedrock: Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY\n"
-            f"                 Or configure ~/.aws/credentials\n\n"
-            f"For other providers: Edit credentials.json with API keys\n\n"
-            f"Then run: python3 setup.py"
+            f"Edit credentials.json with your API keys.\n\n"
+            f"Run: python3 setup.py\n\n"
+            f"All credentials must be stored in credentials.json (folder is self-contained)"
         )
     
     def status(self) -> Dict[str, Any]:

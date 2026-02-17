@@ -32,7 +32,14 @@ if [ ! -f "clawservant.py" ]; then
 fi
 
 echo ""
-echo "⚠️  To complete setup, run:"
+echo "⚠️  Next steps:"
+echo ""
+echo "1. Install Python dependencies:"
+echo "   pip3 install boto3 anthropic openai httpx"
+echo ""
+echo "2. Configure your LLM provider:"
 echo "   python3 setup.py"
 echo ""
-echo "This will guide you through provider selection and configuration."
+echo "3. Start using ClawServant:"
+echo "   python3 clawservant.py --task 'Your task here'"
+echo ""

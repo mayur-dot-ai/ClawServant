@@ -160,6 +160,8 @@ def setup_ollama() -> Dict[str, Any]:
 def main():
     """Main setup wizard."""
     print_header("ClawServant Setup Wizard")
+    print(f"\nWork directory: {Path.cwd()}")
+    print("All files will be created here (credentials.json, memory.jsonl, etc.)")
     
     # Check if already configured
     if Path("credentials.json").exists():

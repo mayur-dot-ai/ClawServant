@@ -69,14 +69,14 @@ python3 clawservant.py --status
 python3 clawservant.py --task "Summarize the history of AI from 2020-2026"
 
 # Check results
-cat ~/.clawservant/workspace/results/task_*.json | head -100
+cat ~/.clawservant/results/task_*.json | head -100
 ```
 
 ## 5. Add a Task
 
 ```bash
 # Create a task
-cat > ~/.clawservant/workspace/tasks/research.md << EOF
+cat > ~/.clawservant/tasks/research.md << EOF
 # Research Task
 
 Identify and summarize the top 5 developments in AI/ML this week.
@@ -89,18 +89,18 @@ EOF
 python3 clawservant.py --continuous
 
 # ClawServant picks up the task automatically and processes it
-# Results saved to ~/.clawservant/workspace/results/
+# Results saved to ~/.clawservant/results/
 ```
 
 ## 6. Customize Your Agent (Optional)
 
 **Add personality:**
 ```bash
-cat > ~/.clawservant/workspace/core.md << 'EOF'
-# My Agent
+cat > ~/.clawservant/core.md << 'EOF'
+# My Research Agent
 
 ## Who I Am
-- Role: Research Specialist
+- Role: Technical Research Specialist
 - Expertise: AI/ML, emerging technologies
 - Style: Analytical, well-sourced, clear
 
@@ -113,7 +113,7 @@ EOF
 
 **Add domain knowledge:**
 ```bash
-cat > ~/.clawservant/workspace/brain/research-standards.md << 'EOF'
+cat > ~/.clawservant/brain/research-standards.md << 'EOF'
 # Research Standards
 
 When researching:

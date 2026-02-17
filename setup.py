@@ -46,9 +46,11 @@ def get_input(prompt: str, default: str = None) -> str:
     except EOFError:
         # Piped mode - use default silently
         if default is not None:
+            print(default)  # Show what we're using
             return default
-        # No default and no input - this is an error
-        raise RuntimeError(f"Interactive input required: {prompt}")
+        # No default and no input - skip or use empty
+        print("")
+        return ""
 
 def get_secret(prompt: str) -> str:
     """Get secret input (hidden)."""
@@ -69,13 +71,13 @@ def select_model(provider_key: str) -> str:
     print(f"  {len(models)+1}) Custom (enter ID manually)")
     
     while True:
-        choice = get_input("Model choice", "1")
+        choice = get_input("Model choice", "1")  # Default to first model
         try:
             idx = int(choice) - 1
             if 0 <= idx < len(models):
                 return models[idx]["id"]
             elif idx == len(models):
-                return get_input("Model ID")
+                return get_input("Model ID", "")
             else:
                 print("Invalid choice")
         except ValueError:
@@ -115,7 +117,13 @@ def setup_anthropic() -> Dict[str, Any]:
     print(f"\n🔧 {MODELS_DB['anthropic']['name']} Configuration")
     print(f"   {MODELS_DB['anthropic']['description']}")
     
-    api_key = get_secret("API Key (sk-ant-...)")
+    try:
+        api_key = get_secret("API Key (sk-ant-...)")
+    except RuntimeError:
+        # Piped mode - can't get interactive secret
+        print("⚠️  Skipping Anthropic (requires interactive input for API key)")
+        return None
+    
     model = select_model("anthropic")
     
     return {
@@ -132,7 +140,12 @@ def setup_openai() -> Dict[str, Any]:
     print(f"\n🔧 {MODELS_DB['openai']['name']} Configuration")
     print(f"   {MODELS_DB['openai']['description']}")
     
-    api_key = get_secret("API Key (sk-...)")
+    try:
+        api_key = get_secret("API Key (sk-...)")
+    except RuntimeError:
+        print("⚠️  Skipping OpenAI (requires interactive input for API key)")
+        return None
+    
     model = select_model("openai")
     
     return {
@@ -149,7 +162,12 @@ def setup_openrouter() -> Dict[str, Any]:
     print(f"\n🔧 {MODELS_DB['openrouter']['name']} Configuration")
     print(f"   {MODELS_DB['openrouter']['description']}")
     
-    api_key = get_secret("API Key (sk-or-...)")
+    try:
+        api_key = get_secret("API Key (sk-or-...)")
+    except RuntimeError:
+        print("⚠️  Skipping OpenRouter (requires interactive input for API key)")
+        return None
+    
     model = select_model("openrouter")
     
     return {
@@ -212,7 +230,7 @@ def main():
     print(f"  {len(provider_list)+1}) Multiple providers (with fallback)")
     print(f"  0) Exit")
     
-    choice = get_input(f"Choice (0-{len(provider_list)+1})", "2")  # Default to Anthropic (index 2)
+    choice = get_input(f"Choice (0-{len(provider_list)+1})", "5")  # Default to Ollama (index 5)
     
     providers = []
     fallback_order = []

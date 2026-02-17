@@ -94,9 +94,10 @@ python3 clawservant.py --continuous
 
 ## 6. Customize Your Agent (Optional)
 
-**Add personality:**
+**Add personality (WHO you are):**
 ```bash
-cat > ~/.clawservant/core.md << 'EOF'
+mkdir -p ~/.clawservant/personality
+cat > ~/.clawservant/personality/personality.md << 'EOF'
 # My Research Agent
 
 ## Who I Am
@@ -111,17 +112,33 @@ cat > ~/.clawservant/core.md << 'EOF'
 EOF
 ```
 
-**Add domain knowledge:**
+**Add rules (HOW you behave):**
+```bash
+mkdir -p ~/.clawservant/rules
+cat > ~/.clawservant/rules/rules.md << 'EOF'
+# Research Rules
+
+When researching topics:
+- IF asked for facts, THEN verify with 3+ sources
+- IF uncertain, THEN flag clearly as opinion
+- IF incomplete, THEN list what's missing
+
+Citations:
+- ALWAYS include source URLs
+- ALWAYS link to original research
+EOF
+```
+
+**Add domain knowledge (WHAT you know):**
 ```bash
 cat > ~/.clawservant/brain/research-standards.md << 'EOF'
 # Research Standards
 
-When researching:
-1. Seek 3+ independent sources
-2. Verify facts before including
-3. Cite sources explicitly
-4. Flag uncertainty clearly
-5. Structure findings logically
+- Seek multiple independent sources
+- Distinguish opinion from fact
+- Cite sources explicitly
+- Flag uncertainty clearly
+- Structure findings logically
 EOF
 ```
 

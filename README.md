@@ -197,9 +197,11 @@ ClawServant has three separate identity layers:
 **3. Brain Files (`brain/` folder)**
 - WHAT the agent knows: domain knowledge, standards, methodology
 - Multiple files in `brain/` folder
-- Examples: `research-standards.md`, `coding-standards.md`, `company-values.md`
+- Files are read in **alphabetical order**
+- Examples: `a.md`, `b.md`, `coding-standards.md`, `research-methodology.md`
 - Auto-reloads every cycle (no restart needed if you add/modify files)
 - Each file added to the system prompt automatically
+- Use numeric prefixes if order matters: `01-foundations.md`, `02-standards.md`
 
 ### Example: Three-Layer Setup
 
@@ -309,14 +311,15 @@ for r in results:
 ```
 ~/.clawservant/
 ├── credentials.json          # LLM provider config (you create)
-├── personality/              # Agent identity (WHO you are)
-│   └── personality.md        # Personality template (optional)
-├── brain/                    # Knowledge base (WHAT you know)
-│   ├── domain-knowledge.md
-│   ├── coding-standards.md
-│   └── research-methodology.md
-├── rules/                    # Behavior guidelines (HOW you behave)
-│   └── rules.md              # If/then rules (optional)
+├── personality/              
+│   └── personality.md        # WHO you are (template provided)
+├── rules/                    
+│   └── rules.md              # HOW you behave (template provided)
+├── brain/                    
+│   ├── a.md                  # Example file (delete after reading)
+│   ├── b.md                  # Example file (delete after reading)
+│   ├── example.md            # Usage guide
+│   └── [your-files].md       # Drop any .md/.txt files here
 ├── tasks/                    # Task queue (you drop .md files)
 ├── results/                  # Task outputs (auto-generated)
 ├── memory.jsonl              # Persistent memories (auto-generated)

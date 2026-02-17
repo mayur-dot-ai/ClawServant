@@ -57,7 +57,7 @@ curl -fsSL https://github.com/mayur-dot-ai/ClawServant/raw/main/install.sh | bas
 This will:
 1. Clone the repository
 2. Run an interactive setup wizard
-3. Configure your LLM provider (Bedrock, Anthropic, OpenAI, OpenRouter, Ollama)
+3. Configure your LLM provider (30+ models across multiple providers)
 4. Create folders and credentials.json
 5. Verify the setup works
 

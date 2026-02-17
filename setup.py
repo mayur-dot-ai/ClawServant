@@ -84,7 +84,11 @@ def setup_bedrock() -> Dict[str, Any]:
     """Configure AWS Bedrock."""
     print(f"\n🔧 {MODELS_DB['bedrock']['name']} Configuration")
     print(f"   {MODELS_DB['bedrock']['description']}")
+    print("\n⚠️  You need AWS credentials (Access Key ID + Secret Access Key)")
+    print("   Get them from: https://console.aws.amazon.com/iam/home?#/security_credentials")
     
+    access_key = get_input("AWS Access Key ID", "")
+    secret_key = get_secret("AWS Secret Access Key")
     region = get_input("AWS Region", "us-east-1")
     model_id = select_model("bedrock")
     
@@ -93,7 +97,9 @@ def setup_bedrock() -> Dict[str, Any]:
         "enabled": True,
         "config": {
             "region": region,
-            "model_id": model_id
+            "model_id": model_id,
+            "access_key": access_key,
+            "secret_key": secret_key,
         }
     }
 

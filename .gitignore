@@ -1,28 +1,6 @@
-workspace/tasks/*
-workspace/results/*
-!workspace/results/.gitkeep
-
-# Keep memory structure but not actual data
-workspace/memory.jsonl
-workspace/state.json
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.egg-info/
-.venv/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
+node_modules/
 *.log
-claw-continuous.log
+*.json
+!credentials.json.example
+workspace/
+.DS_Store

@@ -48,110 +48,56 @@ ClawServant builds on lessons learned from [HermitClaw](https://github.com/openc
 
 ## Quick Start
 
-### 1. Install
+### Option 1: Automated Installer (Recommended)
+
+```bash
+curl -fsSL https://github.com/mayur-dot-ai/ClawServant/raw/main/install.sh | bash
+```
+
+This will:
+1. Clone the repository
+2. Run an interactive setup wizard
+3. Configure your LLM provider (Bedrock, Anthropic, OpenAI, OpenRouter, Ollama)
+4. Create folders and credentials.json
+5. Verify the setup works
+
+### Option 2: Manual Setup
+
+```bash
+# Clone
+git clone https://github.com/mayur-dot-ai/ClawServant.git
+cd ClawServant
+
+# Run setup wizard
+python3 setup.py
+```
+
+### Option 3: Manual Configuration
 
 ```bash
 git clone https://github.com/mayur-dot-ai/ClawServant.git
 cd ClawServant
-```
 
-### 2. Configure Your LLM
-
-Create `credentials.json` in your working directory:
-
-```bash
+# Copy and edit credentials
 cp credentials.json.example credentials.json
 # Edit credentials.json with your provider config
+
+# Create folders
+mkdir -p tasks results brain personality rules
 ```
 
-**AWS Bedrock:**
-```json
-{
-  "providers": [
-    {
-      "name": "bedrock",
-      "enabled": true,
-      "config": {
-        "region": "us-east-1",
-        "model_id": "us.anthropic.claude-haiku-4-5-20251001-v1:0"
-      }
-    }
-  ],
-  "fallback_order": ["bedrock"]
-}
-```
+## First Run
 
-**Anthropic API:**
-```json
-{
-  "providers": [
-    {
-      "name": "anthropic",
-      "enabled": true,
-      "config": {
-        "model": "claude-3-5-sonnet-20241022"
-      }
-    }
-  ],
-  "fallback_order": ["anthropic"]
-}
-```
-
-**OpenAI:**
-```json
-{
-  "providers": [
-    {
-      "name": "openai",
-      "enabled": true,
-      "config": {
-        "model": "gpt-4o-mini"
-      }
-    }
-  ],
-  "fallback_order": ["openai"]
-}
-```
-
-**Local Ollama:**
-```json
-{
-  "providers": [
-    {
-      "name": "ollama",
-      "enabled": true,
-      "config": {
-        "base_url": "http://localhost:11434",
-        "model": "llama2"
-      }
-    }
-  ],
-  "fallback_order": ["ollama"]
-}
-```
-
-See [SETUP.md](./SETUP.md) for complete setup guide.
-
-### 3. Run
-
-**Single task:**
 ```bash
-python3 clawservant.py --task "Your task here"
-```
+# Check status
+python3 clawservant.py --status
 
-**Continuous thinking:**
-```bash
+# Run a single task
+python3 clawservant.py --task "What is 2+2?"
+
+# Start continuous thinking
 python3 clawservant.py --continuous
 ```
-
-**Check status:**
-```bash
-python3 clawservant.py --status
-```
-
-### 4. Monitor
-
-All output is saved to the current working directory:
 ```
 /path/to/work/
 ├── credentials.json      # Your LLM provider config

@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-ClawServant — CLI-first specialist agent for OpenClawServant.
+ClawServant — CLI-first specialist agent for OpenClaw.
 
 A lean, self-contained AI employee that:
 - Thinks continuously (5-second cycles)
 - Persists memory across restarts
-- Processes tasks from stdin or files
+- Processes tasks from files or CLI
 - Outputs structured results (JSON/markdown)
-- Runs on AWS Bedrock (no web UI, no FastAPI overhead)
+- Supports any LLM provider (Bedrock, Anthropic, OpenAI, Ollama)
 
 Usage:
-    python3 claw.py                 # Start continuous thinking loop
-    python3 claw.py --task <text>   # Process single task
-    python3 claw.py --memory        # Query memory
-    python3 claw.py --status        # Show state
+    python3 clawservant.py                 # Start continuous thinking loop
+    python3 clawservant.py --task <text>   # Process single task
+    python3 clawservant.py --memory        # Query memory
+    python3 clawservant.py --status        # Show state
 """
 
 import json
@@ -26,7 +26,8 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-import boto3
+
+from providers import ProviderManager
 
 # Setup logging
 logging.basicConfig(
@@ -36,21 +37,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger("clawservant")
 
-# Bedrock client
-bedrock = boto3.client("bedrock-runtime", region_name="us-east-1")
-
 # Configuration
-MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
-WORK_DIR = Path.home() / ".openclaw" / "workspace" / "claw" / "workspace"
+WORK_DIR = Path.home() / ".clawservant" / "workspace"
 MEMORY_FILE = WORK_DIR / "memory.jsonl"
 STATE_FILE = WORK_DIR / "state.json"
 TASKS_DIR = WORK_DIR / "tasks"
 RESULTS_DIR = WORK_DIR / "results"
-LOGS_FILE = WORK_DIR / "claw.log"
 
 # Ensure directories exist
 for d in [WORK_DIR, TASKS_DIR, RESULTS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
+
+# Provider manager (global, initialized at startup)
+provider_manager = None
 
 
 class Memory:
@@ -73,7 +72,7 @@ class Memory:
         """Add a memory (thought, observation, learning, etc)."""
         memory = {
             "timestamp": datetime.utcnow().isoformat(),
-            "kind": kind,  # "thought", "observation", "learning", "task", "result"
+            "kind": kind,
             "content": content,
             "importance": importance,
         }
@@ -87,22 +86,16 @@ class Memory:
         """Get recent memories, optionally filtered by kind."""
         filtered = self.memories if kind is None else [m for m in self.memories if m["kind"] == kind]
         return filtered[-n:]
-    
-    def search(self, query: str, n: int = 5) -> List[Dict]:
-        """Simple search by content (for now, substring match)."""
-        results = [m for m in self.memories if query.lower() in m["content"].lower()]
-        return results[-n:]
 
 
 class ClawServant:
-    """Specialist agent powered by Bedrock."""
+    """Specialist agent powered by flexible LLM providers."""
     
     def __init__(self, name: str = "Researcher"):
         self.name = name
         self.memory = Memory()
         self.state = self._load_state()
         self.current_task = None
-        self.task_queue = []
         logger.info(f"ClawServant ({self.name}) initialized")
     
     def _load_state(self) -> Dict[str, Any]:
@@ -125,7 +118,7 @@ class ClawServant:
             json.dump(self.state, f, indent=2)
     
     async def think(self, prompt: str) -> str:
-        """Call Bedrock Haiku 4.5 for thinking."""
+        """Call LLM via provider manager (auto-selects available provider)."""
         # Build system prompt
         system_prompt = f"""You are {self.name}, a specialist AI agent working for mayur.ai.
 
@@ -145,27 +138,16 @@ Recent memories:
         for mem in recent:
             system_prompt += f"\n- [{mem['kind']}] {mem['content'][:100]}..."
         
-        # Call Bedrock
+        # Call LLM via provider manager
         try:
-            response = bedrock.converse(
-                modelId=MODEL_ID,
-                system=[{"text": system_prompt}],
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [{"text": prompt}],
-                    }
-                ],
-                inferenceConfig={
-                    "maxTokens": 500,
-                    "temperature": 1,
-                },
+            thought, provider_used = await provider_manager.call(
+                system_prompt, prompt, max_tokens=500
             )
-            
-            thought = response["output"]["message"]["content"][0]["text"]
+            if self.state['cycles'] == 0:  # Log on first cycle
+                logger.info(f"Using provider: {provider_used}")
             return thought
         except Exception as e:
-            logger.error(f"Bedrock call failed: {e}")
+            logger.error(f"LLM call failed: {e}")
             return f"[ERROR] Failed to think: {e}"
     
     async def process_task(self, task_text: str) -> Dict[str, Any]:
@@ -253,6 +235,8 @@ Recent memories:
 
 
 async def main():
+    global provider_manager
+    
     parser = argparse.ArgumentParser(description="ClawServant — CLI specialist agent")
     parser.add_argument("--task", type=str, help="Process a single task")
     parser.add_argument("--continuous", action="store_true", help="Run continuous thinking")
@@ -261,8 +245,17 @@ async def main():
     parser.add_argument("--memory", action="store_true", help="Show recent memories")
     parser.add_argument("--status", action="store_true", help="Show status")
     parser.add_argument("--name", type=str, default="Researcher", help="Agent name")
+    parser.add_argument("--credentials", type=str, help="Path to credentials.json")
     
     args = parser.parse_args()
+    
+    # Initialize provider manager
+    cred_path = Path(args.credentials) if args.credentials else None
+    try:
+        provider_manager = ProviderManager(cred_path)
+    except Exception as e:
+        logger.error(f"Failed to initialize provider manager: {e}")
+        sys.exit(1)
     
     # Initialize agent
     agent = ClawServant(name=args.name)
@@ -288,11 +281,21 @@ async def main():
     
     elif args.status:
         agent.show_status()
+        print(f"=== LLM Provider Status ===")
+        status = provider_manager.status()
+        print(f"Active provider: {status['active_provider']}")
+        print(f"Available providers: {status['available_providers']}")
+        print(f"Credentials file: {status['credentials_file']}\n")
     
     else:
         # Default: show status and memory
         agent.show_status()
         agent.show_memory()
+        print(f"=== LLM Providers ===")
+        status = provider_manager.status()
+        print(f"Available: {status['available_providers']}")
+        print(f"Configured at: {status['credentials_file']}")
+        print()
 
 
 if __name__ == "__main__":

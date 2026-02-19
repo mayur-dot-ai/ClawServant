@@ -29,6 +29,16 @@ from typing import Optional, Dict, Any, List
 
 from providers import ProviderManager
 
+# Try to import tool manager (optional)
+try:
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+    from tools.tool_manager import ToolManager
+    TOOLS_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    TOOLS_AVAILABLE = False
+    ToolManager = None
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -118,9 +128,9 @@ class Memory:
 
 
 class ClawServant:
-    """Specialist agent powered by flexible LLM providers."""
+    """Specialist agent powered by flexible LLM providers and tools."""
     
-    def __init__(self, name: str = "Researcher"):
+    def __init__(self, name: str = "Developer", use_tools: bool = True):
         self.name = name
         self.memory = Memory()
         self.state = self._load_state()
@@ -129,6 +139,16 @@ class ClawServant:
         self.brain = self._load_brain()
         self.brain_mtime = self._get_brain_mtime()
         self.current_task = None
+        
+        # Initialize tool manager if available
+        self.tool_manager = None
+        if use_tools and TOOLS_AVAILABLE:
+            try:
+                self.tool_manager = ToolManager(WORK_DIR / "tools")
+                logger.info(f"Tool manager initialized: {len(self.tool_manager.tools)} tools available")
+            except Exception as e:
+                logger.warning(f"Failed to initialize tool manager: {e}")
+        
         logger.info(f"ClawServant ({self.name}) initialized")
     
     def _load_state(self) -> Dict[str, Any]:
@@ -209,8 +229,8 @@ class ClawServant:
         with open(STATE_FILE, "w") as f:
             json.dump(self.state, f, indent=2)
     
-    async def think(self, prompt: str) -> str:
-        """Call LLM via provider manager (auto-selects available provider)."""
+    async def think(self, prompt: str, allow_tools: bool = True) -> str:
+        """Call LLM via provider manager, with optional tool support."""
         # Build system prompt
         system_prompt = f"""You are {self.name}, a specialist AI agent.
 
@@ -236,6 +256,64 @@ class ClawServant:
         if self.brain:
             system_prompt += f"## Your Knowledge\n{self.brain}\n\n"
         
+        # Add tools if available
+        if allow_tools and self.tool_manager:
+            available_tools = await self.tool_manager.available_tools()
+            if available_tools:
+                system_prompt += f"""## Available Tools
+
+You have access to tools. To use a tool, return ONLY valid JSON (no markdown):
+{{"tool": "tool_name", "params": {{...}}}}
+
+Do not wrap in markdown code blocks. Do not include explanatory text before or after.
+
+Available tools:
+
+"""
+                for tool in available_tools:
+                    system_prompt += f"### {tool['name']}\n"
+                    system_prompt += f"{tool['description']}\n"
+                    
+                    # Add specific parameter docs for each tool
+                    if tool['name'] == 'file-io':
+                        system_prompt += """Parameters:
+- action: "read" | "write" | "append" | "delete" | "list"
+- path: file or directory path
+- content: (for write/append) the content to write
+
+Example: {"tool": "file-io", "params": {"action": "write", "path": "file.txt", "content": "hello"}}
+
+"""
+                    elif tool['name'] == 'web-fetch':
+                        system_prompt += """Parameters:
+- url: the website URL
+- action: "fetch" | "extract" | "links" | "metadata"
+- format: (for extract) "markdown" or "text"
+
+Example: {"tool": "web-fetch", "params": {"url": "https://example.com", "action": "extract", "format": "text"}}
+
+"""
+                    elif tool['name'] == 'headless-browser':
+                        system_prompt += """Parameters:
+- url: the website URL
+- action: "screenshot" | "click" | "type" | "scroll" | "wait_for" | "get_text"
+- selector: (for click/type/wait_for) CSS selector
+- text: (for type) text to type
+
+Example: {"tool": "headless-browser", "params": {"url": "https://example.com", "action": "screenshot"}}
+
+"""
+                    elif tool['name'] == 'shell-exec':
+                        system_prompt += """Parameters:
+- command: shell command to execute
+- timeout: (optional) timeout in seconds
+- cwd: (optional) working directory
+
+Example: {"tool": "shell-exec", "params": {"command": "ls -la /tmp"}}
+
+"""
+                    system_prompt += "\n"
+        
         # Add context
         system_prompt += f"""## Current Context
 
@@ -256,6 +334,46 @@ Tasks completed: {self.state['tasks_completed']}
             )
             if self.state['cycles'] == 0:  # Log on first cycle
                 logger.info(f"Using provider: {provider_used}")
+            
+            # Check if response contains a tool call
+            if allow_tools and self.tool_manager:
+                try:
+                    import re
+                    
+                    # Extract JSON objects from response
+                    # Strategy: find all {...} and try to parse them as JSON
+                    json_objects = re.findall(r'\{(?:[^{}]|(?:\{[^{}]*\}))*\}', thought)
+                    
+                    for json_str in json_objects:
+                        try:
+                            obj = json.loads(json_str)
+                            
+                            if "tool" in obj and "params" in obj:
+                                tool_name = obj["tool"]
+                                tool_params = obj["params"]
+                                
+                                logger.info(f"✅ Tool call found: {tool_name}")
+                                logger.debug(f"   Params: {tool_params}")
+                                
+                                tool_result = await self.tool_manager.call_tool(tool_name, **tool_params)
+                                logger.info(f"✅ Tool executed successfully")
+                                
+                                self.memory.add("tool_call", f"{tool_name}: {json.dumps(tool_result)[:200]}", importance=2)
+                                
+                                # Feed result back to LLM for synthesis
+                                synthesis_prompt = f"Tool result from {tool_name}:\n\n{json.dumps(tool_result, indent=2)}\n\nSynthesize into clear response."
+                                final_thought, _ = await provider_manager.call(
+                                    system_prompt, synthesis_prompt, max_tokens=500
+                                )
+                                return final_thought
+                        except json.JSONDecodeError:
+                            # Not JSON, continue
+                            continue
+                
+                except Exception as e:
+                    logger.debug(f"Tool call parsing failed: {e}")
+                    pass
+            
             return thought
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
@@ -291,6 +409,94 @@ Tasks completed: {self.state['tasks_completed']}
         logger.info(f"Task completed: {result_file}")
         return result
     
+
+    def parse_task_frontmatter(self, task_text: str) -> tuple:
+        """Parse frontmatter from task file. Returns (metadata, content)."""
+        import re
+        frontmatter_pattern = r'^---\s*\n(.*?)\n---\s*\n(.*)$'
+        match = re.match(frontmatter_pattern, task_text, re.DOTALL)
+        
+        if match:
+            # Simple key: value parsing (no yaml dependency)
+            metadata = {}
+            for line in match.group(1).split('\n'):
+                if ':' in line:
+                    key, val = line.split(':', 1)
+                    metadata[key.strip()] = val.strip()
+            content = match.group(2)
+            return metadata, content
+        
+        return {}, task_text
+
+    async def process_task_with_loop(self, task_text: str, max_iterations: int = 10) -> dict:
+        """Process task with loop until TASK_DONE or max iterations."""
+        metadata, content = self.parse_task_frontmatter(task_text)
+        iteration = int(metadata.get('iteration', 1))
+        task_id = metadata.get('task_id', f"task_{int(time.time())}")
+        
+        logger.info(f"Processing task {task_id} with loop (max {max_iterations} iterations)")
+        self.current_task = content
+        self.memory.add("task", f"[Loop] {content[:100]}...", importance=3)
+        
+        final_result = None
+        result_text = ""
+        
+        while iteration <= max_iterations:
+            logger.info(f"🔄 Loop iteration {iteration}/{max_iterations}")
+            
+            # Build prompt with iteration context
+            prompt = f"""Task for you (Iteration {iteration}/{max_iterations}):
+
+{content}
+
+IMPORTANT: When you have fully completed ALL steps of the task, include TASK_DONE in your response.
+If you need to do more work, continue without TASK_DONE."""
+            
+            # Think and get result
+            result_text = await self.think(prompt)
+            
+            # Check for completion signal
+            if "TASK_DONE" in result_text:
+                logger.info(f"✅ TASK_DONE signal received at iteration {iteration}")
+                final_result = {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "task_id": task_id,
+                    "task": content,
+                    "result": result_text,
+                    "iterations": iteration,
+                    "status": "complete"
+                }
+                break
+            
+            # Not done yet
+            logger.info(f"⏳ No TASK_DONE signal, iteration {iteration} complete")
+            self.memory.add("iteration", f"Iter {iteration}: {result_text[:100]}...", importance=2)
+            iteration += 1
+        
+        # Max iterations reached without completion
+        if final_result is None:
+            logger.warning(f"⚠️ Max iterations ({max_iterations}) reached without TASK_DONE")
+            final_result = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "task_id": task_id,
+                "task": content,
+                "result": result_text,
+                "iterations": iteration - 1,
+                "status": "max_iterations_reached"
+            }
+        
+        # Save result
+        result_file = RESULTS_DIR / f"{task_id}.json"
+        with open(result_file, "w") as f:
+            json.dump(final_result, f, indent=2)
+        
+        self.memory.add("result", f"Task {task_id}: {final_result['status']} in {final_result['iterations']} iterations", importance=2)
+        self.state["tasks_completed"] += 1
+        self._save_state()
+        
+        logger.info(f"Task completed: {result_file} (status: {final_result['status']})")
+        return final_result
+
     async def continuous_thinking(self, interval: int = 5, duration: Optional[int] = None):
         """Run continuous thinking loop."""
         logger.info(f"Starting continuous thinking (interval={interval}s)")
@@ -347,6 +553,15 @@ Tasks completed: {self.state['tasks_completed']}
         print(f"Work Dir: {WORK_DIR}")
         print(f"  brain/: {list(BRAIN_DIR.glob('*')) if BRAIN_DIR.exists() else 'empty'}")
         print(f"  tasks/: {list(TASKS_DIR.glob('*')) if TASKS_DIR.exists() else 'empty'}")
+        
+        # Show tool status if available
+        if self.tool_manager:
+            tool_status = self.tool_manager.status()
+            print(f"\n=== Tools ===")
+            print(f"Tools Available: {tool_status['tools_available']}")
+            print(f"Tools: {', '.join(tool_status['tool_names']) if tool_status['tool_names'] else 'none'}")
+            print(f"Total Tool Calls: {tool_status['total_calls']}")
+            print(f"Total Tool Cost: ${tool_status['total_cost']:.4f}")
         print()
 
 
@@ -373,7 +588,9 @@ async def main():
     parser.add_argument("--interval", type=int, default=5, help="Thinking interval in seconds")
     parser.add_argument("--memory", action="store_true", help="Show recent memories")
     parser.add_argument("--status", action="store_true", help="Show status")
-    parser.add_argument("--name", type=str, default="Researcher", help="Agent name")
+    parser.add_argument("--name", type=str, default="Developer", help="Agent name")
+    parser.add_argument("--loop", action="store_true", help="Enable loop mode (iterate until TASK_DONE)")
+    parser.add_argument("--max-iterations", type=int, default=10, help="Max iterations in loop mode")
     parser.add_argument("--credentials", type=str, help="Path to credentials.json")
     
     args = parser.parse_args()
@@ -391,7 +608,10 @@ async def main():
     
     # Execute command
     if args.task:
-        result = await agent.process_task(args.task)
+        if args.loop:
+            result = await agent.process_task_with_loop(args.task, max_iterations=args.max_iterations)
+        else:
+            result = await agent.process_task(args.task)
         print(json.dumps(result, indent=2))
     
     elif args.continuous:

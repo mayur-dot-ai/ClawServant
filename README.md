@@ -166,6 +166,30 @@ Then **stop here** and check with your human operator. You need those capabiliti
 - Drop tasks: `echo "task content" > tasks/task_$(date +%s).md`
 - Check results: `cat results/task_*.json`
 
+
+
+### Loop Mode (Multi-Step Tasks)
+
+For complex tasks that require multiple steps (read context → analyze → post), use loop mode:
+
+```bash
+# Run with loop until TASK_DONE or max iterations
+python3 clawservant.py --loop --max-iterations 10 --task "Your multi-step task"
+```
+
+**How it works:**
+1. Servant processes task, can execute tool calls
+2. If output contains `TASK_DONE` → task complete, exit
+3. If no `TASK_DONE` → increment iteration, continue
+4. If max iterations reached → exit with status "max_iterations_reached"
+
+**When to use loop mode:**
+- Tasks requiring context gathering before action
+- Multi-step workflows (read → analyze → post)
+- Tasks where servant needs multiple tool calls
+
+**Completion signal:** Include `TASK_DONE` in your response when the task is fully complete.
+
 ---
 
 ## Portability

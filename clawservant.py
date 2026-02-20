@@ -9,6 +9,11 @@ A lean, self-contained AI employee that:
 - Outputs structured results (JSON/markdown)
 - Supports any LLM provider (Bedrock, Anthropic, OpenAI, Ollama)
 
+V2 Changes:
+- XML delimiter-based tool detection (<tool>...</tool>)
+- Multi-tool loop within think() for tool chaining
+- Reliable tool execution without regex fragility
+
 Usage:
     python3 clawservant.py                 # Start continuous thinking loop
     python3 clawservant.py --task <text>   # Process single task
@@ -26,6 +31,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Dict, Any, List
+import re
 
 from providers import ProviderManager
 
@@ -229,8 +235,41 @@ class ClawServant:
         with open(STATE_FILE, "w") as f:
             json.dump(self.state, f, indent=2)
     
-    async def think(self, prompt: str, allow_tools: bool = True) -> str:
-        """Call LLM via provider manager, with optional tool support."""
+    def _extract_tool_calls(self, text: str) -> List[Dict[str, Any]]:
+        """Extract tool calls from LLM response using XML delimiters.
+        
+        Looks for: <tool>{"tool": "name", "params": {...}}</tool>
+        
+        Returns list of parsed tool call dicts.
+        """
+        tool_calls = []
+        pattern = r'<tool>(.*?)</tool>'
+        matches = re.findall(pattern, text, re.DOTALL)
+        
+        for match in matches:
+            try:
+                # Clean up the JSON (strip whitespace, handle newlines)
+                json_str = match.strip()
+                tool_call = json.loads(json_str)
+                
+                # Validate structure
+                if "tool" in tool_call and "params" in tool_call:
+                    tool_calls.append(tool_call)
+                    logger.debug(f"Parsed tool call: {tool_call['tool']}")
+                else:
+                    logger.warning(f"Invalid tool call structure: {tool_call}")
+            except json.JSONDecodeError as e:
+                logger.warning(f"Failed to parse tool call JSON: {e}")
+                logger.debug(f"Raw content: {match[:100]}")
+        
+        return tool_calls
+    
+    async def think(self, prompt: str, allow_tools: bool = True, max_tool_iterations: int = 10) -> str:
+        """Call LLM via provider manager, with multi-tool support.
+        
+        V2 Change: Now loops until LLM stops requesting tools or max_tool_iterations reached.
+        This allows: read file → analyze → post comment in ONE think() call.
+        """
         # Build system prompt
         system_prompt = f"""You are {self.name}, a specialist AI agent.
 
@@ -262,10 +301,15 @@ class ClawServant:
             if available_tools:
                 system_prompt += f"""## Available Tools
 
-You have access to tools. To use a tool, return ONLY valid JSON (no markdown):
-{{"tool": "tool_name", "params": {{...}}}}
+You have access to tools. To call a tool, use XML delimiters:
 
-Do not wrap in markdown code blocks. Do not include explanatory text before or after.
+<tool>{{"tool": "tool_name", "params": {{"param": "value"}}}}</tool>
+
+CRITICAL:
+- Wrap the JSON in <tool>...</tool> tags
+- Use valid JSON inside the tags
+- You can call MULTIPLE tools in one response
+- After tool results, you'll get context to continue
 
 Available tools:
 
@@ -281,7 +325,7 @@ Available tools:
 - path: file or directory path
 - content: (for write/append) the content to write
 
-Example: {"tool": "file-io", "params": {"action": "write", "path": "file.txt", "content": "hello"}}
+Example: <tool>{"tool": "file-io", "params": {"action": "read", "path": "file.txt"}}</tool>
 
 """
                     elif tool['name'] == 'web-fetch':
@@ -290,7 +334,7 @@ Example: {"tool": "file-io", "params": {"action": "write", "path": "file.txt", "
 - action: "fetch" | "extract" | "links" | "metadata"
 - format: (for extract) "markdown" or "text"
 
-Example: {"tool": "web-fetch", "params": {"url": "https://example.com", "action": "extract", "format": "text"}}
+Example: <tool>{"tool": "web-fetch", "params": {"url": "https://example.com", "action": "extract", "format": "text"}}</tool>
 
 """
                     elif tool['name'] == 'headless-browser':
@@ -300,7 +344,7 @@ Example: {"tool": "web-fetch", "params": {"url": "https://example.com", "action"
 - selector: (for click/type/wait_for) CSS selector
 - text: (for type) text to type
 
-Example: {"tool": "headless-browser", "params": {"url": "https://example.com", "action": "screenshot"}}
+Example: <tool>{"tool": "headless-browser", "params": {"url": "https://example.com", "action": "screenshot"}}</tool>
 
 """
                     elif tool['name'] == 'shell-exec':
@@ -309,7 +353,7 @@ Example: {"tool": "headless-browser", "params": {"url": "https://example.com", "
 - timeout: (optional) timeout in seconds
 - cwd: (optional) working directory
 
-Example: {"tool": "shell-exec", "params": {"command": "ls -la /tmp"}}
+Example: <tool>{"tool": "shell-exec", "params": {"command": "ls -la /tmp"}}</tool>
 
 """
                     system_prompt += "\n"
@@ -327,57 +371,78 @@ Tasks completed: {self.state['tasks_completed']}
         for mem in recent:
             system_prompt += f"\n- [{mem['kind']}] {mem['content'][:100]}..."
         
-        # Call LLM via provider manager
-        try:
-            thought, provider_used = await provider_manager.call(
-                system_prompt, prompt, max_tokens=500
-            )
-            if self.state['cycles'] == 0:  # Log on first cycle
-                logger.info(f"Using provider: {provider_used}")
-            
-            # Check if response contains a tool call
-            if allow_tools and self.tool_manager:
-                try:
-                    import re
-                    
-                    # Extract JSON objects from response
-                    # Strategy: find all {...} and try to parse them as JSON
-                    json_objects = re.findall(r'\{(?:[^{}]|(?:\{[^{}]*\}))*\}', thought)
-                    
-                    for json_str in json_objects:
-                        try:
-                            obj = json.loads(json_str)
-                            
-                            if "tool" in obj and "params" in obj:
-                                tool_name = obj["tool"]
-                                tool_params = obj["params"]
-                                
-                                logger.info(f"✅ Tool call found: {tool_name}")
-                                logger.debug(f"   Params: {tool_params}")
-                                
-                                tool_result = await self.tool_manager.call_tool(tool_name, **tool_params)
-                                logger.info(f"✅ Tool executed successfully")
-                                
-                                self.memory.add("tool_call", f"{tool_name}: {json.dumps(tool_result)[:200]}", importance=2)
-                                
-                                # Feed result back to LLM for synthesis
-                                synthesis_prompt = f"Tool result from {tool_name}:\n\n{json.dumps(tool_result, indent=2)}\n\nSynthesize into clear response."
-                                final_thought, _ = await provider_manager.call(
-                                    system_prompt, synthesis_prompt, max_tokens=500
-                                )
-                                return final_thought
-                        except json.JSONDecodeError:
-                            # Not JSON, continue
-                            continue
+        # Multi-tool loop
+        current_prompt = prompt
+        tool_iteration = 0
+        conversation_history = []
+        
+        while tool_iteration < max_tool_iterations:
+            # Call LLM
+            try:
+                thought, provider_used = await provider_manager.call(
+                    system_prompt, current_prompt, max_tokens=500
+                )
+                if self.state['cycles'] == 0 and tool_iteration == 0:  # Log on first cycle
+                    logger.info(f"Using provider: {provider_used}")
                 
-                except Exception as e:
-                    logger.debug(f"Tool call parsing failed: {e}")
-                    pass
-            
-            return thought
-        except Exception as e:
-            logger.error(f"LLM call failed: {e}")
-            return f"[ERROR] Failed to think: {e}"
+                conversation_history.append({"role": "assistant", "content": thought})
+                
+                # Check for tool calls (if tools enabled)
+                if allow_tools and self.tool_manager:
+                    tool_calls = self._extract_tool_calls(thought)
+                    
+                    if tool_calls:
+                        logger.info(f"🔧 Found {len(tool_calls)} tool call(s) in iteration {tool_iteration + 1}")
+                        
+                        # Execute all tool calls
+                        tool_results = []
+                        for tool_call in tool_calls:
+                            tool_name = tool_call["tool"]
+                            tool_params = tool_call["params"]
+                            
+                            logger.info(f"  ✅ Executing: {tool_name}")
+                            
+                            try:
+                                result = await self.tool_manager.call_tool(tool_name, **tool_params)
+                                tool_results.append({
+                                    "tool": tool_name,
+                                    "params": tool_params,
+                                    "result": result,
+                                    "success": True
+                                })
+                                self.memory.add("tool_call", f"{tool_name}: {json.dumps(result)[:200]}", importance=2)
+                            except Exception as e:
+                                logger.error(f"  ❌ Tool execution failed: {e}")
+                                tool_results.append({
+                                    "tool": tool_name,
+                                    "params": tool_params,
+                                    "error": str(e),
+                                    "success": False
+                                })
+                        
+                        # Build next prompt with tool results
+                        results_text = "\n\n".join([
+                            f"Tool: {r['tool']}\nResult: {json.dumps(r.get('result') or r.get('error'), indent=2)}"
+                            for r in tool_results
+                        ])
+                        
+                        current_prompt = f"Tool results:\n\n{results_text}\n\nContinue with your task. If you need more tools, call them. If done, provide your final response."
+                        tool_iteration += 1
+                        
+                        # Continue loop (call LLM again with tool results)
+                        continue
+                
+                # No tool calls found, we're done
+                logger.info(f"✅ No more tool calls, think() complete after {tool_iteration} tool iteration(s)")
+                return thought
+                
+            except Exception as e:
+                logger.error(f"LLM call failed: {e}")
+                return f"[ERROR] Failed to think: {e}"
+        
+        # Max tool iterations reached
+        logger.warning(f"⚠️ Max tool iterations ({max_tool_iterations}) reached")
+        return thought
     
     async def process_task(self, task_text: str) -> Dict[str, Any]:
         """Process a single task."""
@@ -452,7 +517,7 @@ Tasks completed: {self.state['tasks_completed']}
 IMPORTANT: When you have fully completed ALL steps of the task, include TASK_DONE in your response.
 If you need to do more work, continue without TASK_DONE."""
             
-            # Think and get result
+            # Think and get result (multi-tool support within each iteration)
             result_text = await self.think(prompt)
             
             # Check for completion signal

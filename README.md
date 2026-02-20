@@ -4,6 +4,20 @@
 >
 > A lean, CLI-first AI employee that thinks continuously, learns from experience, and executes tasks — without web UI overhead.
 
+## 🚀 V2 Released (Feb 20, 2026)
+
+**Major improvements to tool execution reliability:**
+
+- **XML delimiter-based tool detection** — No more regex failures with `<tool>...</tool>` format
+- **Multi-tool chaining** — Execute multiple tools in one iteration (read → analyze → post)
+- **10x tool iterations per think()** — Complete complex workflows autonomously
+
+**Migration required for existing installations.** See [MIGRATION_V2.md](./MIGRATION_V2.md) for details.
+
+**Breaking change:** Tool format now requires `<tool>{...}</tool>` wrapping. Old JSON-only format deprecated.
+
+---
+
 ## What is ClawServant?
 
 ClawServant is a pure-Python specialist agent powered by your choice of LLM. It's designed to run as a persistent background process, handling deep work tasks (research, analysis, code generation, etc.) while maintaining long-term memory across restarts.
